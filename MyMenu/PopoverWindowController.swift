@@ -2,8 +2,15 @@ import AppKit
 import SwiftUI
 
 private final class MenuBarPanel: NSPanel {
+  var onResignKey: (() -> Void)?
+
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { true }
+
+  override func resignKey() {
+    super.resignKey()
+    onResignKey?()
+  }
 }
 
 /// Owns the menu-bar panel and keeps it inside the display that owns the status item.
@@ -14,9 +21,28 @@ final class PopoverWindowController: NSObject {
 
   private var panel: NSPanel?
   private var contentViewController: NSHostingController<AnyView>?
+  private var dismissMonitors: [Any] = []
+  private var deactivationObserver: NSObjectProtocol?
+  private var ignoreDeactivationUntil = Date.distantPast
 
   init(router: DisplayRouter) {
     self.router = router
+    super.init()
+    deactivationObserver = NotificationCenter.default.addObserver(
+      forName: NSApplication.didResignActiveNotification,
+      object: NSApp,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.handleDeactivation()
+      }
+    }
+  }
+
+  deinit {
+    if let deactivationObserver {
+      NotificationCenter.default.removeObserver(deactivationObserver)
+    }
   }
 
   func toggle(relativeTo button: NSStatusBarButton) {
@@ -42,7 +68,8 @@ final class PopoverWindowController: NSObject {
     )
     let host = NSHostingController(rootView: root)
     host.view.wantsLayer = true
-    host.view.layer?.backgroundColor = .clear
+    host.view.layer?.backgroundColor = NSColor.clear.cgColor
+    host.view.layer?.isOpaque = false
 
     let panel = MenuBarPanel(
       contentRect: NSRect(
@@ -59,19 +86,38 @@ final class PopoverWindowController: NSObject {
     panel.backgroundColor = .clear
     panel.hasShadow = true
     panel.sharingType = .readOnly
-    // Status-item clicks briefly move activation through SystemUIServer. Keep
-    // the panel visible across that hand-off so a real mouse click cannot
-    // immediately hide the panel it just opened.
-    panel.hidesOnDeactivate = false
+    // The panel is keyable now, so AppKit can dismiss it naturally when the
+    // user clicks another application or any other part of the desktop.
+    panel.hidesOnDeactivate = true
     panel.becomesKeyOnlyIfNeeded = false
     panel.isMovable = false
     panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
     panel.contentViewController = host
+
+    panel.onResignKey = { [weak self, weak panel, weak button] in
+      guard let self, let panel, self.panel === panel else { return }
+
+      let mouseLocation = NSEvent.mouseLocation
+      if panel.frame.contains(mouseLocation) {
+        return
+      }
+
+      if let button,
+         let buttonWindow = button.window,
+         buttonWindow.convertToScreen(button.frame).contains(mouseLocation) {
+        return
+      }
+
+      self.close()
+    }
+
     self.panel = panel
     contentViewController = host
+    installDismissMonitors(for: panel, button: button)
 
     let targetScreen = screen(for: button)
     position(panel, relativeTo: button, on: targetScreen)
+    ignoreDeactivationUntil = Date().addingTimeInterval(0.4)
     NSApp.activate(ignoringOtherApps: true)
     panel.makeKeyAndOrderFront(nil)
     DispatchQueue.main.async { [weak self, weak panel] in
@@ -83,9 +129,62 @@ final class PopoverWindowController: NSObject {
   }
 
   func close() {
+    removeDismissMonitors()
     panel?.orderOut(nil)
     panel = nil
     contentViewController = nil
+  }
+
+  private func handleDeactivation() {
+    guard Date() >= ignoreDeactivationUntil else { return }
+    close()
+  }
+
+  private func installDismissMonitors(for panel: NSPanel, button: NSStatusBarButton) {
+    removeDismissMonitors()
+
+    if let localMonitor = NSEvent.addLocalMonitorForEvents(
+      matching: [.leftMouseDown, .rightMouseDown],
+      handler: { [weak self, weak panel, weak button] event in
+        self?.dismissIfNeeded(panel: panel, button: button)
+        return event
+      }
+    ) {
+      dismissMonitors.append(localMonitor)
+    }
+
+    if let globalMonitor = NSEvent.addGlobalMonitorForEvents(
+      matching: [.leftMouseDown, .rightMouseDown],
+      handler: { [weak self, weak panel, weak button] _ in
+        self?.dismissIfNeeded(panel: panel, button: button)
+      }
+    ) {
+      dismissMonitors.append(globalMonitor)
+    }
+  }
+
+  private func removeDismissMonitors() {
+    for monitor in dismissMonitors {
+      NSEvent.removeMonitor(monitor)
+    }
+    dismissMonitors.removeAll()
+  }
+
+  private func dismissIfNeeded(panel: NSPanel?, button: NSStatusBarButton?) {
+    guard let panel, panel.isVisible else { return }
+
+    let mouseLocation = NSEvent.mouseLocation
+    if panel.frame.contains(mouseLocation) {
+      return
+    }
+
+    if let button,
+       let buttonWindow = button.window,
+       buttonWindow.convertToScreen(button.frame).contains(mouseLocation) {
+      return
+    }
+
+    close()
   }
 
   private func screen(for button: NSStatusBarButton) -> NSScreen? {
