@@ -5,21 +5,23 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJ="$ROOT/MyMenu.xcodeproj"
 mkdir -p "$PROJ"
 
-uuid() { uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-' | cut -c1-24; }
+id() {
+  printf '%s' "$1" | shasum -a 256 | cut -c1-24
+}
 
-PROJECT_ID=$(uuid)
-TARGET_ID=$(uuid)
-SOURCES_PHASE=$(uuid)
-FRAMEWORKS_PHASE=$(uuid)
-CORE_DISPLAY_REF=$(uuid)
-CORE_DISPLAY_BUILD=$(uuid)
-PRODUCT_REF=$(uuid)
-CONFIG_LIST_PROJ=$(uuid)
-CONFIG_LIST_TGT=$(uuid)
-DEBUG_CFG=$(uuid)
-RELEASE_CFG=$(uuid)
-DEBUG_CFG_T=$(uuid)
-RELEASE_CFG_T=$(uuid)
+PROJECT_ID=$(id project)
+TARGET_ID=$(id target)
+SOURCES_PHASE=$(id sources-phase)
+FRAMEWORKS_PHASE=$(id frameworks-phase)
+CORE_DISPLAY_REF=$(id core-display-reference)
+CORE_DISPLAY_BUILD=$(id core-display-build)
+PRODUCT_REF=$(id product-reference)
+CONFIG_LIST_PROJ=$(id project-configuration-list)
+CONFIG_LIST_TGT=$(id target-configuration-list)
+DEBUG_CFG=$(id project-debug-configuration)
+RELEASE_CFG=$(id project-release-configuration)
+DEBUG_CFG_T=$(id target-debug-configuration)
+RELEASE_CFG_T=$(id target-release-configuration)
 
 # Collect Swift sources
 SWIFT_FILES=()
@@ -34,8 +36,8 @@ SOURCES_FILES=""
 GROUP_CHILDREN=""
 for f in "${SWIFT_FILES[@]}"; do
   rel_to_group="${f#$ROOT/MyMenu/}"
-  fid=$(uuid)
-  bid=$(uuid)
+  fid=$(id "file-reference:$rel_to_group")
+  bid=$(id "build-file:$rel_to_group")
   FILE_REFS+="
 		$fid /* $(basename "$f") */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = \"$rel_to_group\"; sourceTree = \"<group>\"; };"
   BUILD_FILES+="
@@ -47,7 +49,7 @@ for f in "${SWIFT_FILES[@]}"; do
 done
 
 cat > "$PROJ/project.pbxproj" <<EOF
-// !$*UTF8*$!
+// !\$*UTF8*\$!
 {
 	archiveVersion = 1;
 	classes = {
