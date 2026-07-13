@@ -1,12 +1,13 @@
 import CoreGraphics
 import Foundation
 
+private let ddcLuminanceVCP: UInt8 = 0x10
+
 /// DDC/CI brightness for a single external display via Arm64DDC (VCP 0x10 luminance).
 @MainActor
 final class DDCBrightnessBackend: BrightnessBackend {
   static let tier: BrightnessTier = .ddc
 
-  private static let luminanceVCP: UInt8 = 0x10
   private static let globalDDCQueue = DispatchQueue(label: "MyMenu.globalDDC")
   private static let writeDebounceInterval: DispatchTimeInterval = .milliseconds(150)
 
@@ -15,13 +16,11 @@ final class DDCBrightnessBackend: BrightnessBackend {
   private var maxDDCValue: UInt16 = 100
   private var lastWrittenDDC: UInt16?
 
-  private let writeQueue: DispatchQueue
   private var pendingNormalized: Double?
   private var debounceWorkItem: DispatchWorkItem?
 
   init(displayID: CGDirectDisplayID) {
     self.displayID = displayID
-    writeQueue = DispatchQueue(label: "MyMenu.ddcWrite.\(displayID)")
   }
 
   static func probe(displayID: CGDirectDisplayID) -> Bool {
@@ -38,15 +37,15 @@ final class DDCBrightnessBackend: BrightnessBackend {
     }
     var success = false
     Self.globalDDCQueue.sync {
-      guard let values = Arm64DDC.read(service: service, command: Self.luminanceVCP) else {
+      guard let values = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else {
         return
       }
       maxDDCValue = max(values.max, 1)
       let testValue = values.current
-      guard Arm64DDC.write(service: service, command: Self.luminanceVCP, value: testValue) else {
+      guard Arm64DDC.write(service: service, command: ddcLuminanceVCP, value: testValue) else {
         return
       }
-      guard let reread = Arm64DDC.read(service: service, command: Self.luminanceVCP) else {
+      guard let reread = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else {
         return
       }
       success = abs(Int(reread.current) - Int(testValue)) <= 2
@@ -57,24 +56,19 @@ final class DDCBrightnessBackend: BrightnessBackend {
   func setBrightness(_ value: Double, animated: Bool) {
     _ = animated
     let clamped = min(max(value, 0), 1)
-    writeQueue.async { [weak self] in
-      guard let self else { return }
-      pendingNormalized = clamped
-      debounceWorkItem?.cancel()
-      let work = DispatchWorkItem { [weak self] in
-        self?.flushPendingWrite()
-      }
-      debounceWorkItem = work
-      writeQueue.asyncAfter(deadline: .now() + Self.writeDebounceInterval, execute: work)
+    pendingNormalized = clamped
+    debounceWorkItem?.cancel()
+    let work = DispatchWorkItem { [weak self] in
+      self?.flushPendingWrite()
     }
+    debounceWorkItem = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + Self.writeDebounceInterval, execute: work)
   }
 
   func teardown() {
-    writeQueue.sync {
-      debounceWorkItem?.cancel()
-      debounceWorkItem = nil
-      pendingNormalized = nil
-    }
+    debounceWorkItem?.cancel()
+    debounceWorkItem = nil
+    pendingNormalized = nil
     avService = nil
     lastWrittenDDC = nil
   }
@@ -104,10 +98,12 @@ final class DDCBrightnessBackend: BrightnessBackend {
     let ddcValue = UInt16(round((1.0 - normalized) * Double(maxDDCValue)))
     guard ddcValue != lastWrittenDDC else { return }
 
-    Self.globalDDCQueue.sync {
-      let ok = Arm64DDC.write(service: service, command: Self.luminanceVCP, value: ddcValue)
+    Self.globalDDCQueue.async { [weak self, service] in
+      let ok = Arm64DDC.write(service: service, command: ddcLuminanceVCP, value: ddcValue)
       if ok {
-        lastWrittenDDC = ddcValue
+        Task { @MainActor in
+          self?.lastWrittenDDC = ddcValue
+        }
       }
     }
   }

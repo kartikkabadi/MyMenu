@@ -1,9 +1,6 @@
-# Phase 0 — Tier probe (M1 Pro + LG L22e-40)
+# Brightness tier probe
 
-**Machine:** Apple M1 Pro, macOS 26.5  
-**External:** LG L22e-40 (1920×1080)  
-**Connection:** USB-C → HDMI dongle  
-**Display modes tested:** Extended and mirrored (both required by plan)
+The exact tier depends on the Mac, monitor, cable, adapter, display mode, and monitor OSD settings. The HDMI-dongle case below is a representative probe, not a guarantee for every setup.
 
 ## Expected results (from prior research + hardware path)
 
@@ -13,7 +10,7 @@
 | **2 — Gamma** | `CGSetDisplayTransferByFormula` per display | **Often fail or unreliable** in mirror mode / HDR |
 | **3 — Overlay** | Per-external `NSWindow`, black + opacity | **Expected active tier** — same class as One Menu |
 
-## Runtime probe (MyMenu)
+## Runtime probe
 
 MyMenu probes at display connect:
 

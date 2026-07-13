@@ -37,7 +37,9 @@ final class PopoverWindowController: NSObject, NSPopoverDelegate {
 
   func popoverWillShow(_ notification: Notification) {
     animationToken.prepareForShow()
-    installContentViewController()
+  }
+
+  func popoverDidShow(_ notification: Notification) {
     configurePopoverWindow()
   }
 
@@ -47,7 +49,6 @@ final class PopoverWindowController: NSObject, NSPopoverDelegate {
     let root = BrightnessPopoverView(router: router, animationToken: animationToken)
       .frame(width: BrightnessDesign.panelWidth)
       .id(animationToken.contentGeneration)
-      .popoverAppear(token: animationToken)
 
     let host = NSHostingController(rootView: root)
     host.view.wantsLayer = true

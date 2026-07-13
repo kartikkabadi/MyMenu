@@ -1,7 +1,5 @@
 //  Copyright © MonitorControl. @JoniVR, @theOneyouseek, @waydabber and others
 
-#pragma once
-
 #import <Foundation/Foundation.h>
 #import <IOKit/i2c/IOI2CInterface.h>
 #import <CoreGraphics/CoreGraphics.h>
@@ -53,4 +51,3 @@ bool CGSIsHDRSupported(CGDirectDisplayID display) __attribute__((weak_import));
 @property(readonly) id <OSDUIHelperProtocol> remoteObjectProxy; // @dynamic remoteObjectProxy;
 
 @end
-

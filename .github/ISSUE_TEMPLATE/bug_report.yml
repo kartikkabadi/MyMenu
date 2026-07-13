@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible problem with MyMenu
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove private window titles, usernames, paths, and logs before posting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable reproduction.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+    validations:
+      required: true
+  - type: input
+    id: display
+    attributes:
+      label: Display and connection
+      description: Include monitor type, cable/adapter, and extended or mirrored mode when relevant.
+    validations:
+      required: false
+  - type: textarea
+    id: permissions
+    attributes:
+      label: Permissions and tier
+      description: State whether Accessibility or Screen Recording is enabled and which brightness tier is shown.
+    validations:
+      required: false

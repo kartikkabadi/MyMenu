@@ -23,6 +23,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       button.action = #selector(togglePopover(_:))
       button.target = self
     }
+
+    // Start Window Management services
+    WindowSnappingService.shared.start()
+    WindowSwitcherService.shared.start()
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -34,8 +38,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     popoverController.toggle(relativeTo: button)
   }
 
+  func updateWindowSnappingState() {
+    if AppPreferences.isWindowSnappingEnabled {
+      WindowSnappingService.shared.start()
+    } else {
+      WindowSnappingService.shared.stop()
+    }
+  }
+
+  func updateWindowSwitcherState() {
+    if AppPreferences.isWindowSwitcherEnabled {
+      WindowSwitcherService.shared.start()
+    } else {
+      WindowSwitcherService.shared.stop()
+    }
+  }
+
   func quitApp() {
     popoverController.close()
+    WindowSnappingService.shared.stop()
+    WindowSwitcherService.shared.stop()
     DispatchQueue.main.async { [weak self] in
       self?.router.teardownAll()
       NSApp.terminate(nil)

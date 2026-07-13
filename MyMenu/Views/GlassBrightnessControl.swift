@@ -24,7 +24,7 @@ struct GlassBrightnessControl: View {
       ) {
         Text("Brightness")
       }
-      .controlSize(.large)
+      .controlSize(.regular)
 
       Image(systemName: "sun.max.fill")
         .font(.system(size: 14, weight: .medium))

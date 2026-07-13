@@ -29,7 +29,7 @@ final class DisplayRouter {
   private var gammaHoldDisplayIDs: Set<CGDirectDisplayID> = []
   private let defaults = UserDefaults.standard
 
-  private static let overlayTransitionDuration: TimeInterval = 0.55
+  private static let overlayTransitionDuration: TimeInterval = 0.9
 
   init() {
     reconfigure()
@@ -135,8 +135,10 @@ final class DisplayRouter {
 
     for item in displays where item.tier == .overlay && item.brightness > 0.001 {
       if Self.isMirrorMode {
-        DisplayGamma.applyBrightnessHold(item.brightness, displayID: item.id)
-        gammaHoldDisplayIDs.insert(item.id)
+        for displayID in Self.mirroredOnlineDisplayIDs(for: item.id) {
+          DisplayGamma.applyBrightnessHold(item.brightness, displayID: displayID, includeBuiltin: true)
+          gammaHoldDisplayIDs.insert(displayID)
+        }
       }
       if let overlay = backends[item.id] as? OverlayBrightnessBackend {
         overlay.setSuppressOrderFront(true)
@@ -149,7 +151,7 @@ final class DisplayRouter {
     overlayInSpaceTransition = false
 
     for displayID in gammaHoldDisplayIDs {
-      DisplayGamma.releaseHold(displayID: displayID)
+      DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
     }
     gammaHoldDisplayIDs.removeAll()
 
@@ -162,6 +164,20 @@ final class DisplayRouter {
 
   private static var isMirrorMode: Bool {
     NSScreen.screens.count == 1
+  }
+
+  private static func mirroredOnlineDisplayIDs(for displayID: CGDirectDisplayID) -> [CGDirectDisplayID] {
+    let online = allOnlineDisplayIDs()
+    if isMirrorMode {
+      return online.isEmpty ? [displayID] : online
+    }
+
+    guard CGDisplayIsInMirrorSet(displayID) != 0 else {
+      return [displayID]
+    }
+
+    let mirrored = online.filter { CGDisplayIsInMirrorSet($0) != 0 }
+    return mirrored.isEmpty ? [displayID] : mirrored
   }
 
   private func refreshDisplayMetadata() {
@@ -230,10 +246,14 @@ final class DisplayRouter {
   // MARK: - Display enumeration
 
   private static func onlineExternalDisplayIDs() -> [CGDirectDisplayID] {
+    allOnlineDisplayIDs().filter { CGDisplayIsBuiltin($0) == 0 }
+  }
+
+  private static func allOnlineDisplayIDs() -> [CGDirectDisplayID] {
     var ids = [CGDirectDisplayID](repeating: 0, count: 32)
     var count: UInt32 = 0
     guard CGGetOnlineDisplayList(32, &ids, &count) == .success else { return [] }
-    return ids.prefix(Int(count)).filter { CGDisplayIsBuiltin($0) == 0 }
+    return Array(ids.prefix(Int(count)))
   }
 
   private static func displayName(_ displayID: CGDirectDisplayID) -> String {
@@ -278,6 +298,9 @@ final class DisplayRouter {
       let router = Unmanaged<DisplayRouter>.fromOpaque(userInfo).takeUnretainedValue()
 
       if flags.contains(.beginConfigurationFlag) {
+        Task { @MainActor in
+          router.scheduleOverlaySpaceSync()
+        }
         return
       }
 
@@ -312,7 +335,9 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      self?.scheduleOverlaySpaceSync()
+      Task { @MainActor in
+        self?.scheduleOverlaySpaceSync()
+      }
     }
 
     NSWorkspace.shared.notificationCenter.addObserver(
@@ -320,7 +345,9 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      self?.scheduleOverlaySpaceSync()
+      Task { @MainActor in
+        self?.scheduleOverlaySpaceSync()
+      }
     }
 
     NotificationCenter.default.addObserver(
@@ -329,7 +356,9 @@ final class DisplayRouter {
       queue: .main
     ) { [weak self] _ in
       guard NSApp.occlusionState.contains(.visible) else { return }
-      self?.scheduleOverlaySpaceSync()
+      Task { @MainActor in
+        self?.scheduleOverlaySpaceSync()
+      }
     }
   }
 
@@ -339,7 +368,9 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      self?.teardownAll()
+      Task { @MainActor in
+        self?.teardownAll()
+      }
     }
   }
 

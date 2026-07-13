@@ -1,32 +1,33 @@
 import CoreGraphics
 
-/// Shared brightness → gamma mapping for Tier 2 and overlay Space-transition holds.
+/// Shared brightness -> gamma mapping for Tier 2 and overlay Space-transition holds.
 enum DisplayGamma {
-  private static let minGamma: CGGammaValue = 0.3
-  private static let maxGamma: CGGammaValue = 1.0
-
-  static func gamma(forBrightness value: Double) -> CGGammaValue {
-    let t = Float(min(max(value, 0), 1))
-    return maxGamma - t * (maxGamma - minGamma)
-  }
+  private static let minMultiplier: Double = 0.15
+  private static let maxMultiplier: Double = 1.0
 
   @discardableResult
-  static func applyGamma(_ gamma: CGGammaValue, to displayID: CGDirectDisplayID) -> CGError {
-    CGSetDisplayTransferByFormula(
+  static func applyBrightness(_ brightness: Double, to displayID: CGDirectDisplayID) -> CGError {
+    let t = min(max(brightness, 0), 1)
+    let mult = CGGammaValue(minMultiplier + t * (maxMultiplier - minMultiplier))
+    return CGSetDisplayTransferByFormula(
       displayID,
-      0, 1, gamma,
-      0, 1, gamma,
-      0, 1, gamma
+      0, mult, 1.0,
+      0, mult, 1.0,
+      0, mult, 1.0
     )
   }
 
-  static func applyBrightnessHold(_ brightness: Double, displayID: CGDirectDisplayID) {
-    guard CGDisplayIsBuiltin(displayID) == 0 else { return }
-    _ = applyGamma(gamma(forBrightness: brightness), to: displayID)
+  static func applyBrightnessHold(
+    _ brightness: Double,
+    displayID: CGDirectDisplayID,
+    includeBuiltin: Bool = false
+  ) {
+    guard includeBuiltin || CGDisplayIsBuiltin(displayID) == 0 else { return }
+    _ = applyBrightness(brightness, to: displayID)
   }
 
-  static func releaseHold(displayID: CGDirectDisplayID) {
-    guard CGDisplayIsBuiltin(displayID) == 0 else { return }
-    _ = applyGamma(maxGamma, to: displayID)
+  static func releaseHold(displayID: CGDirectDisplayID, includeBuiltin: Bool = false) {
+    guard includeBuiltin || CGDisplayIsBuiltin(displayID) == 0 else { return }
+    _ = applyBrightness(1.0, to: displayID)
   }
 }

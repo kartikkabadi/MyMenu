@@ -1,33 +1,19 @@
-# Liquid Glass UI — One Menu parity
+# Interface notes
 
-## Shell (matches One Menu binary)
+MyMenu uses an AppKit status item and `NSPopover` so the menu bar experience stays lightweight and can recreate the SwiftUI content on each open.
 
-- **`NSStatusItem` + `NSPopover`** via [`PopoverWindowController`](../MyMenu/PopoverWindowController.swift) — not `MenuBarExtra`.
-- **`popoverWillShow`**: clear popover window, bump `PopoverAnimationToken.contentGeneration` (Recreate pattern), reinstall `NSHostingController`.
-- **Appear every open**: [`PopoverAppearModifier`](../MyMenu/Design/PopoverAppearModifier.swift) driven by `appearGeneration` + fresh view `id` — not one-shot `onAppear` on a persistent host.
+## Panel behavior
 
-## Glass layout
+- The panel uses a compact two-section layout: external-display brightness first, optional window controls second.
+- macOS 26 uses material-backed cards and the system `Slider`.
+- Older supported SDK paths use the custom SwiftUI slider in `ExternalBrightnessSlider`.
+- Permission warnings are shown inline beside the feature that needs them.
+- The Quit action tears down overlays, gamma holds, hot-key handlers, and window-management monitors before terminating.
 
-- **Panel**: `.glassEffect(.regular.interactive())` on background `RoundedRectangle` only — controls sit above, not inside stacked glass.
-- **Quit**: `.glassProminent` + `BrightnessDesign.quitTint` (blue) + white label; action via `AppDelegate.quitApp()` (close popover → teardown → terminate).
-- **Slider**: system `Slider` + hierarchical moon/sun icons.
+## Display transitions
 
-## Overlay + fullscreen video Spaces (mirror mode)
+Overlay-backed displays can move or change Spaces while the app remains alive. `DisplayRouter` keeps overlay backends alive during layout churn, suppresses redundant ordering during a transition, and performs one final layout sync after the transition settles. Mirrored displays use a temporary gamma hold to reduce flashes while overlay windows are being repositioned.
 
-When `NSScreen.screens.count == 1` (mirrored desktop) and tier is **overlay**:
+## Window controls
 
-1. **Space transition start** (`activeSpaceDidChange`, etc.): apply **gamma hold** via [`DisplayGamma`](../MyMenu/Core/DisplayGamma.swift) at current brightness; suppress overlay `orderFront`; reaffirm shade alpha only.
-2. **~550ms later**: release gamma hold; single `finalizeAfterSpaceTransition()` (frame sync + one order-front).
-3. Overlay panel uses **`NSPanel` at `.floating`** + `.fullScreenAuxiliary` (not `maximumWindow`).
-
-This avoids the “flash bang” when swiping to Safari native fullscreen video Spaces while keeping normal desktop Spaces stable.
-
-## Desk-test checklist
-
-| Action | Expected |
-|--------|----------|
-| Open popover repeatedly | Appear animation every time |
-| Quit button | Blue button, white text, app exits |
-| Swipe L/R normal ↔ normal Space | Dim persists, no flash |
-| Swipe L/R ↔ Netflix fullscreen Space | No full-brightness flash |
-| Mission Control (3-finger up) | No regression |
+Window snapping uses the Accessibility API and converts between AppKit and Accessibility coordinate systems using the primary desktop bounds. The switcher uses Core Graphics window metadata to build its list, then uses Accessibility to focus the selected window after activating its app.

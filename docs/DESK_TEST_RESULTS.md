@@ -1,37 +1,35 @@
-# Desk test results (automated smoke + environment)
+# Validation notes
 
-**Date:** 2026-05-23  
-**Build:** MyMenu 0.1.0 (Release)  
-**Host:** M1 Pro, macOS 26.5, LG L22e-40 via USB-C→HDMI  
+This document records the checks that are useful when validating MyMenu on a real Mac. Hardware brightness behavior varies by monitor, cable, adapter, display mode, and macOS privacy state, so the runtime checks below complement the build check.
 
 ## Automated checks
 
 | Check | Result |
-|-------|--------|
-| `xcodebuild` Release | PASS |
-| Ad-hoc codesign | PASS |
-| `dist/MyMenu.zip` | Created |
-| `dist/MyMenu.dmg` | Created |
-| App launch (`open MyMenu.app`) | Process running after launch |
+| --- | --- |
+| `xcodebuild` Debug build | Pass on the development Mac |
+| Project generation | Pass with `scripts/generate_xcodeproj.sh` |
+| `git diff --check` | Required before publishing |
 
-## Tier probe (expected)
+## Brightness matrix
 
-| Tier | Expected on HDMI dongle |
-|------|-------------------------|
-| DDC/CI | Fail (adapter) |
-| Gamma | May fail in mirror mode |
-| Overlay | **Active** |
+| Scenario | Expected result |
+| --- | --- |
+| Direct USB-C/DisplayPort display with DDC/CI enabled | Hardware brightness when supported |
+| HDMI dongle without DDC/CI | Screen overlay fallback |
+| Extended desktop | External display dims; built-in display remains unchanged |
+| Mirrored desktop | The selected external display path remains stable during Space changes |
+| Quit MyMenu | Overlay windows are removed and temporary gamma changes are released |
 
-See [TIER_PROBE.md](TIER_PROBE.md).
+## Window feature matrix
 
-## Manual verification (user)
+Before testing, grant Accessibility to MyMenu. Also grant Screen Recording for the window switcher.
 
-1. Click menu bar sun icon → panel shows **External Monitor Brightness** and tier label.
-2. Drag slider → external monitor dims; **built-in unchanged**.
-3. Repeat in **mirrored** and **extended** display modes.
-4. Quit → overlay removed (no leftover dim layer).
+| Feature | Shortcut | Expected result |
+| --- | --- | --- |
+| Window snapping | Control-Option + arrow | Focused window moves to the selected layout |
+| Window restore | Repeat the same snapping shortcut | The previous window frame is restored |
+| Window switcher | Option-Tab | HUD appears and selection advances |
+| Reverse switcher | Option-Shift-Tab | HUD appears and selection moves backward |
+| Window selection | Release Option | Selected app/window becomes active |
 
-## Artifacts
-
-- `dist/MyMenu.dmg`
-- `dist/MyMenu.zip`
+If a shortcut does not fire, check for a macOS or third-party shortcut conflict and confirm the feature is enabled in the MyMenu panel.

@@ -70,4 +70,4 @@ echo "DMG: $DIST/${SCHEME}.dmg"
 
 echo ""
 echo "Install: cp -R \"$APP\" /Applications/ && open /Applications/${SCHEME}.app"
-echo "If blocked: xattr -dr com.apple.quarantine /Applications/${SCHEME}.app"
+echo "If macOS asks for confirmation: Control-click the app in Finder and choose Open."

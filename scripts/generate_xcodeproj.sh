@@ -10,8 +10,9 @@ uuid() { uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-' | cut -c1-24; }
 PROJECT_ID=$(uuid)
 TARGET_ID=$(uuid)
 SOURCES_PHASE=$(uuid)
-RESOURCES_PHASE=$(uuid)
 FRAMEWORKS_PHASE=$(uuid)
+CORE_DISPLAY_REF=$(uuid)
+CORE_DISPLAY_BUILD=$(uuid)
 PRODUCT_REF=$(uuid)
 CONFIG_LIST_PROJ=$(uuid)
 CONFIG_LIST_TGT=$(uuid)
@@ -19,20 +20,30 @@ DEBUG_CFG=$(uuid)
 RELEASE_CFG=$(uuid)
 DEBUG_CFG_T=$(uuid)
 RELEASE_CFG_T=$(uuid)
-BUILD_CFG_LIST=$(uuid)
 
 # Collect Swift sources
-mapfile -t SWIFT_FILES < <(find "$ROOT/MyMenu" -name '*.swift' | sort)
+SWIFT_FILES=()
+while IFS= read -r file; do
+  if [[ -n "$file" ]]; then
+    SWIFT_FILES+=("$file")
+  fi
+done < <(find "$ROOT/MyMenu" -name '*.swift' | sort)
 FILE_REFS=""
 BUILD_FILES=""
+SOURCES_FILES=""
+GROUP_CHILDREN=""
 for f in "${SWIFT_FILES[@]}"; do
-  rel="${f#$ROOT/}"
+  rel_to_group="${f#$ROOT/MyMenu/}"
   fid=$(uuid)
   bid=$(uuid)
   FILE_REFS+="
-		$fid /* $(basename "$f") */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = \"$(basename "$f")\"; sourceTree = \"<group>\"; };"
+		$fid /* $(basename "$f") */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = \"$rel_to_group\"; sourceTree = \"<group>\"; };"
   BUILD_FILES+="
 		$bid /* $(basename "$f") in Sources */ = {isa = PBXBuildFile; fileRef = $fid /* $(basename "$f") */; };"
+  SOURCES_FILES+="
+				$bid /* $(basename "$f") in Sources */,"
+  GROUP_CHILDREN+="
+				$fid /* $(basename "$f") */,"
 done
 
 cat > "$PROJ/project.pbxproj" <<EOF
@@ -45,6 +56,8 @@ cat > "$PROJ/project.pbxproj" <<EOF
 	objects = {
 $FILE_REFS
 		$PRODUCT_REF /* MyMenu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMenu.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		$CORE_DISPLAY_REF /* CoreDisplay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreDisplay.framework; path = System/Library/Frameworks/CoreDisplay.framework; sourceTree = SDKROOT; };
+		$CORE_DISPLAY_BUILD /* CoreDisplay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = $CORE_DISPLAY_REF /* CoreDisplay.framework */; };
 		INFO_PLIST /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ENTITLEMENTS /* MyMenu.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMenu.entitlements; sourceTree = "<group>"; };
 		BRIDGING /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
@@ -92,7 +105,7 @@ $BUILD_FILES
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-$(echo "$BUILD_FILES" | sed -n 's/.*\(..........\) \/\*.*/\1/p' | while read -r bid; do echo "				$bid /* in Sources */,"; done)
+$SOURCES_FILES
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,6 +113,7 @@ $(echo "$BUILD_FILES" | sed -n 's/.*\(..........\) \/\*.*/\1/p' | while read -r 
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				$CORE_DISPLAY_BUILD /* CoreDisplay.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,6 +229,7 @@ $(echo "$BUILD_FILES" | sed -n 's/.*\(..........\) \/\*.*/\1/p' | while read -r 
 			children = (
 				INFO_PLIST /* Info.plist */,
 				ENTITLEMENTS /* MyMenu.entitlements */,
+$GROUP_CHILDREN
 			);
 			path = MyMenu;
 			sourceTree = "<group>";
@@ -224,4 +239,4 @@ $(echo "$BUILD_FILES" | sed -n 's/.*\(..........\) \/\*.*/\1/p' | while read -r 
 }
 EOF
 
-echo "Generated $PROJ (minimal — use XcodeGen or manual groups if build fails)"
+echo "Generated $PROJ"
