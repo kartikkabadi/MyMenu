@@ -1,6 +1,11 @@
 import AppKit
 import SwiftUI
 
+private final class MenuBarPanel: NSPanel {
+  override var canBecomeKey: Bool { true }
+  override var canBecomeMain: Bool { true }
+}
+
 /// Owns the menu-bar panel and keeps it inside the display that owns the status item.
 @MainActor
 final class PopoverWindowController: NSObject {
@@ -15,9 +20,17 @@ final class PopoverWindowController: NSObject {
   }
 
   func toggle(relativeTo button: NSStatusBarButton) {
-    if panel != nil {
-      close()
-      return
+    if let panel {
+      if panel.isVisible {
+        close()
+        return
+      }
+
+      // A panel can be ordered out by AppKit when the menu-bar app loses
+      // activation. Do not let that stale instance swallow the next click.
+      panel.orderOut(nil)
+      self.panel = nil
+      contentViewController = nil
     }
 
     animationToken.prepareForShow()
@@ -31,22 +44,26 @@ final class PopoverWindowController: NSObject {
     host.view.wantsLayer = true
     host.view.layer?.backgroundColor = .clear
 
-    let panel = NSPanel(
+    let panel = MenuBarPanel(
       contentRect: NSRect(
         origin: .zero,
         size: NSSize(width: BrightnessDesign.panelWidth, height: BrightnessDesign.panelHeight)
       ),
-      styleMask: [.borderless, .nonactivatingPanel],
+      styleMask: [.borderless],
       backing: .buffered,
       defer: false
     )
     panel.level = .statusBar
+    panel.isFloatingPanel = true
     panel.isOpaque = false
     panel.backgroundColor = .clear
     panel.hasShadow = true
     panel.sharingType = .readOnly
-    panel.hidesOnDeactivate = true
-    panel.becomesKeyOnlyIfNeeded = true
+    // Status-item clicks briefly move activation through SystemUIServer. Keep
+    // the panel visible across that hand-off so a real mouse click cannot
+    // immediately hide the panel it just opened.
+    panel.hidesOnDeactivate = false
+    panel.becomesKeyOnlyIfNeeded = false
     panel.isMovable = false
     panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
     panel.contentViewController = host
@@ -55,13 +72,14 @@ final class PopoverWindowController: NSObject {
 
     let targetScreen = screen(for: button)
     position(panel, relativeTo: button, on: targetScreen)
-    panel.orderFrontRegardless()
+    NSApp.activate(ignoringOtherApps: true)
+    panel.makeKeyAndOrderFront(nil)
     DispatchQueue.main.async { [weak self, weak panel] in
       guard let self, let panel, self.panel === panel else { return }
       self.position(panel, relativeTo: button, on: targetScreen)
-      panel.orderFrontRegardless()
+      NSApp.activate(ignoringOtherApps: true)
+      panel.makeKeyAndOrderFront(nil)
     }
-    NSApp.activate(ignoringOtherApps: true)
   }
 
   func close() {
