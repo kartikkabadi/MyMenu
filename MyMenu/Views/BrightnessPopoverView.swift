@@ -205,15 +205,19 @@ struct BrightnessPopoverView: View {
           Text("Quit MyMenu")
             .font(.system(size: 11, weight: .bold))
         }
-        .foregroundStyle(.red.opacity(0.85))
+        .foregroundStyle(.red)
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity)
         .background {
           Capsule()
-            .fill(Color.red.opacity(0.08))
+            .fill(.regularMaterial)
             .overlay {
               Capsule()
-                .stroke(Color.red.opacity(0.2), lineWidth: 0.8)
+                .fill(Color.red.opacity(0.12))
+            }
+            .overlay {
+              Capsule()
+                .stroke(Color.red.opacity(0.42), lineWidth: 1)
             }
         }
       }
