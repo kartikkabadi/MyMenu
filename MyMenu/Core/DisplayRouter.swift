@@ -22,7 +22,10 @@ struct ExternalDisplayItem: Identifiable, Equatable {
 @Observable
 final class DisplayRouter {
   private(set) var displays: [ExternalDisplayItem] = []
+  private(set) var isScreenRecordingPreviewEnabled =
+    ProcessInfo.processInfo.environment["MYMENU_SCREEN_RECORDING_PREVIEW"] == "1"
   private var backends: [CGDirectDisplayID: any BrightnessBackend] = [:]
+  private var captureOverlayBackends: [CGDirectDisplayID: OverlayBrightnessBackend] = [:]
   private var reconfigureWorkItem: DispatchWorkItem?
   private var overlayTransitionEndWorkItem: DispatchWorkItem?
   private var overlayInSpaceTransition = false
@@ -60,6 +63,7 @@ final class DisplayRouter {
   ) {
     let clamped = min(max(value, 0), 1)
     backends[displayID]?.setBrightness(clamped, animated: animated)
+    captureOverlayBackends[displayID]?.setBrightness(clamped, animated: animated)
     if persist {
       persistBrightness(clamped, displayID: displayID)
     }
@@ -78,6 +82,7 @@ final class DisplayRouter {
 
     // Space swipe / layout churn: keep overlay windows, avoid flash.
     if externalIDs == Set(backends.keys), !backends.isEmpty {
+      synchronizeCaptureOverlays()
       syncOverlayLayout()
       refreshDisplayMetadata()
       return
@@ -106,14 +111,26 @@ final class DisplayRouter {
       persistTier(tier, displayID: displayID)
     }
     displays = items.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    synchronizeCaptureOverlays()
+  }
+
+  /// Adds a capture-visible overlay for tiers that change the display after macOS renders pixels.
+  /// This mode is session-only so a demo setting cannot unexpectedly affect later launches.
+  func setScreenRecordingPreviewEnabled(_ enabled: Bool) {
+    guard enabled != isScreenRecordingPreviewEnabled else { return }
+    isScreenRecordingPreviewEnabled = enabled
+
+    if enabled {
+      synchronizeCaptureOverlays()
+    } else {
+      teardownCaptureOverlays()
+    }
   }
 
   /// Relayout overlay frames after Spaces change without destroying windows.
   func syncOverlayLayout() {
-    for backend in backends.values {
-      if let overlay = backend as? OverlayBrightnessBackend {
-        overlay.finalizeAfterSpaceTransition()
-      }
+    for overlay in overlayBackends {
+      overlay.finalizeAfterSpaceTransition()
     }
   }
 
@@ -133,14 +150,17 @@ final class DisplayRouter {
   private func beginOverlaySpaceTransition() {
     overlayInSpaceTransition = true
 
-    for item in displays where item.tier == .overlay && item.brightness > 0.001 {
+    for item in displays where item.brightness > 0.001 {
+      let overlays = overlays(for: item.id)
+      guard !overlays.isEmpty else { continue }
+
       if Self.isMirrorMode {
         for displayID in Self.mirroredOnlineDisplayIDs(for: item.id) {
           DisplayGamma.applyBrightnessHold(item.brightness, displayID: displayID, includeBuiltin: true)
           gammaHoldDisplayIDs.insert(displayID)
         }
       }
-      if let overlay = backends[item.id] as? OverlayBrightnessBackend {
+      for overlay in overlays {
         overlay.setSuppressOrderFront(true)
         overlay.reaffirmAlphaDuringTransition()
       }
@@ -155,10 +175,8 @@ final class DisplayRouter {
     }
     gammaHoldDisplayIDs.removeAll()
 
-    for backend in backends.values {
-      if let overlay = backend as? OverlayBrightnessBackend {
-        overlay.finalizeAfterSpaceTransition()
-      }
+    for overlay in overlayBackends {
+      overlay.finalizeAfterSpaceTransition()
     }
   }
 
@@ -190,10 +208,51 @@ final class DisplayRouter {
   }
 
   func teardownAll() {
+    teardownCaptureOverlays()
     for backend in backends.values {
       backend.teardown()
     }
     backends.removeAll()
+  }
+
+  private var overlayBackends: [OverlayBrightnessBackend] {
+    let activeOverlays = backends.values.compactMap { $0 as? OverlayBrightnessBackend }
+    return activeOverlays + Array(captureOverlayBackends.values)
+  }
+
+  private func overlays(for displayID: CGDirectDisplayID) -> [OverlayBrightnessBackend] {
+    var result: [OverlayBrightnessBackend] = []
+    if let activeOverlay = backends[displayID] as? OverlayBrightnessBackend {
+      result.append(activeOverlay)
+    }
+    if let captureOverlay = captureOverlayBackends[displayID] {
+      result.append(captureOverlay)
+    }
+    return result
+  }
+
+  private func synchronizeCaptureOverlays() {
+    guard isScreenRecordingPreviewEnabled else { return }
+
+    let activeDisplayIDs = Set(displays.map(\.id))
+    let staleDisplayIDs = captureOverlayBackends.keys.filter { !activeDisplayIDs.contains($0) }
+    for displayID in staleDisplayIDs {
+      captureOverlayBackends[displayID]?.teardown()
+      captureOverlayBackends.removeValue(forKey: displayID)
+    }
+
+    for item in displays where item.tier != .overlay && captureOverlayBackends[item.id] == nil {
+      let overlay = OverlayBrightnessBackend(displayID: item.id)
+      overlay.setBrightness(item.brightness, animated: false)
+      captureOverlayBackends[item.id] = overlay
+    }
+  }
+
+  private func teardownCaptureOverlays() {
+    for overlay in captureOverlayBackends.values {
+      overlay.teardown()
+    }
+    captureOverlayBackends.removeAll()
   }
 
   func quit() {

@@ -4,7 +4,7 @@ enum BrightnessDesign {
   static let panelWidth: CGFloat = 324
   static let panelCornerRadius: CGFloat = 24
   static let panelPadding: CGFloat = 18
-  static let panelHeight: CGFloat = 294
+  static let panelHeight: CGFloat = 362
   static let sectionSpacing: CGFloat = 12
 
   static let appearSpring = Animation.spring(response: 0.44, dampingFraction: 0.82)

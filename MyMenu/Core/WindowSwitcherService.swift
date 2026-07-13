@@ -179,6 +179,7 @@ final class WindowSwitcherService: ObservableObject {
       defer: false
     )
     panel.level = .statusBar
+    panel.sharingType = .readOnly
     panel.isOpaque = false
     panel.backgroundColor = .clear
     panel.hasShadow = true

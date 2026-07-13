@@ -39,6 +39,13 @@ struct BrightnessPopoverView: View {
     )
   }
 
+  private var screenRecordingPreviewBinding: Binding<Bool> {
+    Binding(
+      get: { router.isScreenRecordingPreviewEnabled },
+      set: { router.setScreenRecordingPreviewEnabled($0) }
+    )
+  }
+
   var body: some View {
     Group {
       if #available(macOS 26.0, *) {
@@ -152,6 +159,30 @@ struct BrightnessPopoverView: View {
             .padding(.leading, 24)
           }
         }
+
+        Divider()
+          .opacity(0.1)
+
+        VStack(alignment: .leading, spacing: 6) {
+          Toggle(isOn: screenRecordingPreviewBinding) {
+            HStack(spacing: 8) {
+              Image(systemName: "record.circle")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+              Text("Show Dimming in Recordings")
+                .font(.system(size: 12, weight: .medium))
+            }
+          }
+          .toggleStyle(.switch)
+
+          if router.isScreenRecordingPreviewEnabled {
+            Text("Adds a capture-visible overlay for demo videos; the monitor may look slightly darker. This mode lasts until MyMenu quits.")
+              .font(.system(size: 10, weight: .medium))
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+              .padding(.leading, 24)
+          }
+        }
       }
       .padding(.vertical, 12)
       .padding(.horizontal, 14)
@@ -243,6 +274,9 @@ struct BrightnessPopoverView: View {
           .font(.system(size: 10))
           .foregroundStyle(.secondary)
       }
+
+      Toggle("Show Dimming in Recordings", isOn: screenRecordingPreviewBinding)
+        .toggleStyle(.checkbox)
 
       Button("Quit") {
         AppDelegate.shared?.quitApp()

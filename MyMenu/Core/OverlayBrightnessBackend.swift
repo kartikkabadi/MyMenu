@@ -100,6 +100,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
       screen: screen
     )
     overlayPanel.level = Self.overlayWindowLevel
+    overlayPanel.sharingType = .readOnly
     overlayPanel.isOpaque = false
     overlayPanel.backgroundColor = .clear
     overlayPanel.ignoresMouseEvents = true

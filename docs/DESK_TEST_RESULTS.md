@@ -31,5 +31,8 @@ Before testing, grant Accessibility to MyMenu. Also grant Screen Recording for t
 | Window switcher | Option-Tab | HUD appears and selection advances |
 | Reverse switcher | Option-Shift-Tab | HUD appears and selection moves backward |
 | Window selection | Release Option | Selected app/window becomes active |
+| Recording preview | Enable **Show Dimming in Recordings** | Brightness changes are visible in a full-display recording |
 
 If a shortcut does not fire, check for a macOS or third-party shortcut conflict and confirm the feature is enabled in the MyMenu panel.
+
+For recording preview, use a full-display source for the display that contains the external monitor. A selected-window recording or a recording of a different display cannot include an overlay that belongs to the external display.

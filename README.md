@@ -9,6 +9,7 @@ MyMenu is a small macOS menu bar utility for controlling the brightness of exter
 - **Hardware brightness (DDC/CI):** writes the monitor's luminance value when the display and connection expose DDC.
 - **Software gamma:** applies a per-display gamma multiplier when hardware brightness is unavailable.
 - **Screen overlay:** dims the external display with a translucent overlay as a reliable fallback, including common HDMI-dongle setups.
+- **Recording preview:** temporarily adds a visible overlay so dimming is present in screen recordings even when the active tier is gamma or hardware brightness.
 - **Window snapping (experimental):** `Control-Option-Left/Right` snaps the focused window to a half and `Control-Option-Up/Down` maximizes or centers it.
 - **Window switcher (experimental):** `Option-Tab` and `Option-Shift-Tab` cycle through visible windows and select on Option release.
 
@@ -49,6 +50,16 @@ Brightness control does not require special privacy permissions. The optional wi
 - **Screen Recording:** required for macOS to provide the window list used by the switcher.
 
 Enable each feature in the MyMenu panel, then follow the macOS prompt. If a permission was granted after the app was running, bring MyMenu to the front or restart it so the status refreshes.
+
+### Recording a demo
+
+Screen recording captures macOS-rendered pixels. Hardware brightness and gamma can change the physical display after those pixels are captured, so a recording may look unchanged even while the monitor visibly dims. Enable **Show Dimming in Recordings** in the MyMenu panel before recording. MyMenu adds a capture-visible overlay for the session; disable it afterward for normal brightness behavior.
+
+For a repeatable demo launch, the same mode can be enabled without clicking the panel:
+
+```bash
+MYMENU_SCREEN_RECORDING_PREVIEW=1 /Applications/MyMenu.app/Contents/MacOS/MyMenu
+```
 
 ## Display behavior
 

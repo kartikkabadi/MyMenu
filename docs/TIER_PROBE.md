@@ -20,6 +20,8 @@ MyMenu probes at display connect:
 
 Persisted per display UUID in `UserDefaults` (`activeTier`).
 
+Gamma and hardware brightness can be invisible to screen capture because they are applied after macOS renders the pixels. Enable **Show Dimming in Recordings** for a session-only overlay when recording a demo.
+
 ## Validation checklist
 
 - [ ] Extended: slider dims **external only**; built-in unchanged  

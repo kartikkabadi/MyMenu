@@ -8,6 +8,7 @@ MyMenu uses an AppKit status item and `NSPopover` so the menu bar experience sta
 - macOS 26 uses material-backed cards and the system `Slider`.
 - Older supported SDK paths use the custom SwiftUI slider in `ExternalBrightnessSlider`.
 - Permission warnings are shown inline beside the feature that needs them.
+- **Show Dimming in Recordings** enables a session-only overlay for demos when the selected tier changes pixels after macOS capture.
 - The Quit action tears down overlays, gamma holds, hot-key handlers, and window-management monitors before terminating.
 
 ## Display transitions

@@ -66,5 +66,6 @@ final class PopoverWindowController: NSObject, NSPopoverDelegate {
     window.isOpaque = false
     window.backgroundColor = .clear
     window.hasShadow = true
+    window.sharingType = .readOnly
   }
 }
