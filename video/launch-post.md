@@ -21,7 +21,7 @@ $2.99 if you want to support it, free if you want to build it.
 ## Launch checklist
 
 - Confirm `https://mymonitor.kartikkabadi.com` resolves after the first Cloudflare Custom Domain deployment.
-- Replace the GitHub repository link if the repository is renamed from `MyMenu`.
+- Use the renamed repository link: `https://github.com/kartikkabadi/MyMonitor`.
 - Set `WHOP_CHECKOUT_URL` before publishing the buy route.
 - Attach the rendered vertical video from `video/out/`.
 - Pause before posting publicly and review the final copy, URL, and checkout behavior.

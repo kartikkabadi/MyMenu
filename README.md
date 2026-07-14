@@ -23,7 +23,7 @@ The DDC path uses private macOS display interfaces and may need maintenance afte
 ## Build from source
 
 ```bash
-git clone https://github.com/kartikkabadi/MyMenu.git MyMonitor
+git clone https://github.com/kartikkabadi/MyMonitor.git
 cd MyMonitor
 ./scripts/build.sh
 ```
@@ -70,7 +70,7 @@ wrangler secret put WHOP_CHECKOUT_URL
 ./scripts/deploy-site.sh
 ```
 
-`scripts/deploy-site.sh` also refuses to deploy when `WHOP_CHECKOUT_URL` is missing. If you only want to preview the static page locally, serve `website/` with any static file server.
+The secret must be the complete Whop checkout URL, including `https://`. The deploy script accepts an already-stored secret or securely updates it from a `WHOP_CHECKOUT_URL` environment variable without printing the value. If you only want to preview the static page locally, serve `website/` with any static file server.
 
 ## Development checks
 

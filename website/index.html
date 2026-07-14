@@ -8,6 +8,10 @@
     <meta property="og:title" content="MyMonitor — the calm way to control your display" />
     <meta property="og:description" content="A native macOS utility for external monitor brightness, window snapping, and Option–Tab switching." />
     <meta property="og:url" content="https://mymonitor.kartikkabadi.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://mymonitor.kartikkabadi.com/assets/mymonitor-launch-poster.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://mymonitor.kartikkabadi.com/assets/mymonitor-launch-poster.jpg" />
     <title>MyMonitor — a calmer Mac</title>
     <link rel="icon" href="/assets/my-monitor-mark.svg" />
     <link rel="canonical" href="https://mymonitor.kartikkabadi.com/" />
@@ -22,6 +26,7 @@
       </a>
       <nav aria-label="Primary navigation">
         <a href="#features">Features</a>
+        <a href="#demo">Demo</a>
         <a href="#how-it-works">How it works</a>
         <a href="#source">Source</a>
         <a class="nav-buy" href="/buy">Buy for $2.99 <span aria-hidden="true">↗</span></a>
@@ -36,7 +41,7 @@
           <p class="hero-lede">MyMonitor puts external-display brightness and a few genuinely useful window shortcuts in one clear menu-bar panel.</p>
           <div class="hero-actions">
             <a class="button primary" href="/buy">Buy MyMonitor <span>· $2.99</span> <b aria-hidden="true">↗</b></a>
-            <a class="button text-button" href="https://github.com/kartikkabadi/MyMenu">Build it yourself <span aria-hidden="true">↗</span></a>
+            <a class="button text-button" href="https://github.com/kartikkabadi/MyMonitor">Build it yourself <span aria-hidden="true">↗</span></a>
           </div>
           <p class="microcopy">Open source under MIT · No account · No analytics</p>
         </div>
@@ -61,6 +66,21 @@
             <div class="mock-row mock-record"><span>◉　Show dimming in recordings</span><i class="switch"></i></div>
             <div class="mock-quit">⌁　Quit MyMonitor</div>
           </div>
+        </div>
+      </section>
+
+      <section class="demo-section shell" id="demo" aria-labelledby="demo-title">
+        <div class="demo-copy">
+          <p class="eyebrow">See it in motion</p>
+          <h2 id="demo-title">A small panel.<br /><em>A calmer rhythm.</em></h2>
+          <p>Open the sun, adjust the display, and get back to the thing you were doing. The optional window tools stay out of the way until you want them.</p>
+          <a class="button outline" href="#source">See the two ways to get it <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="demo-frame">
+          <video controls autoplay muted loop playsinline preload="metadata" poster="/assets/mymonitor-launch-poster.jpg" aria-label="Vertical MyMonitor product demo">
+            <source src="/assets/mymonitor-launch.mp4" type="video/mp4" />
+            Your browser does not support embedded video. View the <a href="/assets/mymonitor-launch.mp4">MyMonitor demo</a> directly.
+          </video>
         </div>
       </section>
 
@@ -92,7 +112,7 @@
       <section class="source-section" id="source">
         <div class="shell source-layout">
           <div><p class="eyebrow">Two honest ways to use it</p><h2>Buy the shortcut.<br /><em>Keep the source.</em></h2><p>MyMonitor is MIT-licensed and built with Swift, AppKit, and SwiftUI. Buy it for $2.99 to support the project and skip the build steps, or clone the repo and make it yours.</p></div>
-          <div class="source-actions"><a class="button primary" href="/buy">Get MyMonitor · $2.99 <b aria-hidden="true">↗</b></a><a class="button outline" href="https://github.com/kartikkabadi/MyMenu">View on GitHub <span aria-hidden="true">↗</span></a><small>Whop checkout · one-time support purchase</small></div>
+          <div class="source-actions"><a class="button primary" href="/buy">Get MyMonitor · $2.99 <b aria-hidden="true">↗</b></a><a class="button outline" href="https://github.com/kartikkabadi/MyMonitor">View on GitHub <span aria-hidden="true">↗</span></a><small>Whop checkout · one-time support purchase</small></div>
         </div>
       </section>
 
@@ -106,7 +126,7 @@
       </section>
     </main>
 
-    <footer class="site-footer shell"><div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>MyMonitor</span></div><p>Made for a calmer Mac · <span id="year"></span></p><div><a href="https://github.com/kartikkabadi/MyMenu">GitHub</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div></footer>
+    <footer class="site-footer shell"><div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>MyMonitor</span></div><p>Made for a calmer Mac · <span id="year"></span></p><div><a href="https://github.com/kartikkabadi/MyMonitor">GitHub</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div></footer>
     <script src="/script.js" defer></script>
   </body>
 </html>
