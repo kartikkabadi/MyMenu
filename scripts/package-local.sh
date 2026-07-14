@@ -2,27 +2,45 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCHEME="MyMenu"
-PROJECT="$ROOT/MyMenu.xcodeproj"
+SCHEME="MyMonitor"
+PROJECT="$ROOT/MyMonitor.xcodeproj"
 CONFIG="${1:-Release}"
 DERIVED="$ROOT/build/DerivedData"
 DIST="$ROOT/dist"
-ENTITLEMENTS="$ROOT/MyMenu/MyMenu.entitlements"
+ENTITLEMENTS="$ROOT/MyMonitor/MyMonitor.entitlements"
 SIGN_ID="${SIGN_ID:--}"
 
 cd "$ROOT"
+./scripts/generate_xcodeproj.sh >/dev/null
 
 if ! xcodebuild -version &>/dev/null; then
-  echo "error: xcodebuild requires full Xcode (sudo xcode-select -s /Applications/Xcode.app/Contents/Developer)" >&2
+  echo "error: xcodebuild requires full Xcode" >&2
   exit 1
 fi
 
 echo "==> Building $SCHEME ($CONFIG)..."
-xcodebuild \
+run_xcodebuild() {
+  # Xcode 26's SwiftBuild service can block when its external-tool stdout is
+  # attached to a pipe. A PTY keeps packaging deterministic in shells.
+  if command -v script >/dev/null 2>&1; then
+    script -q /dev/null xcodebuild "$@" | perl -pe 's/\r//g; s/\x04\x08\x08//g'
+    local status="${PIPESTATUS[0]}"
+    return "$status"
+  else
+    xcodebuild "$@"
+  fi
+}
+
+run_xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
   -configuration "$CONFIG" \
+  -sdk macosx \
+  -destination 'platform=macOS,arch=arm64' \
   -derivedDataPath "$DERIVED" \
+  -jobs 1 \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
   build
 
 APP="$DERIVED/Build/Products/$CONFIG/${SCHEME}.app"
@@ -31,43 +49,39 @@ if [[ ! -d "$APP" ]]; then
   exit 1
 fi
 
-echo "==> Signing..."
-if [[ -f "$ENTITLEMENTS" ]]; then
-  codesign --force --sign "$SIGN_ID" --entitlements "$ENTITLEMENTS" "$APP"
-else
-  codesign --force --sign "$SIGN_ID" "$APP"
-fi
+echo "==> Signing ad hoc release artifact..."
+codesign --force --sign "$SIGN_ID" --entitlements "$ENTITLEMENTS" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 xattr -cr "$APP" 2>/dev/null || true
 
 mkdir -p "$DIST"
-rm -f "$DIST/${SCHEME}.zip"
-ditto -c -k --keepParent "$APP" "$DIST/${SCHEME}.zip"
-echo "ZIP: $DIST/${SCHEME}.zip"
-
-STAGE="$DIST/stage"
-rm -rf "$STAGE" "$DIST/${SCHEME}.dmg"
+STAGE="$DIST/MyMonitor-Installer"
+rm -rf "$STAGE" "$DIST/MyMonitor.zip" "$DIST/MyMonitor.dmg"
 mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/"
+cp -R "$APP" "$STAGE/MyMonitor.app"
+cp "$ROOT/installer/Install MyMonitor.command" "$STAGE/Install MyMonitor.command"
+cp "$ROOT/installer/README.txt" "$STAGE/README.txt"
+chmod +x "$STAGE/Install MyMonitor.command"
+
+ditto -c -k --keepParent "$STAGE" "$DIST/MyMonitor.zip"
 
 if command -v create-dmg &>/dev/null; then
   create-dmg \
-    --volname "$SCHEME" \
-    --window-pos 200 120 --window-size 600 320 \
+    --volname "MyMonitor" \
+    --window-pos 200 120 --window-size 600 360 \
     --icon-size 80 \
-    --icon "${SCHEME}.app" 120 160 \
-    --hide-extension "${SCHEME}.app" \
-    --app-drop-link 400 160 \
+    --icon "MyMonitor.app" 120 160 \
+    --icon "Install MyMonitor.command" 400 160 \
+    --hide-extension "MyMonitor.app" \
     --skip-jenkins \
-    "$DIST/${SCHEME}.dmg" \
+    "$DIST/MyMonitor.dmg" \
     "$STAGE" 2>/dev/null || true
 fi
 
-if [[ ! -f "$DIST/${SCHEME}.dmg" ]]; then
-  hdiutil create -volname "$SCHEME" -srcfolder "$STAGE" -ov -format UDZO "$DIST/${SCHEME}.dmg"
+if [[ ! -f "$DIST/MyMonitor.dmg" ]]; then
+  hdiutil create -volname "MyMonitor" -srcfolder "$STAGE" -ov -format UDZO "$DIST/MyMonitor.dmg" >/dev/null
 fi
-echo "DMG: $DIST/${SCHEME}.dmg"
 
-echo ""
-echo "Install: cp -R \"$APP\" /Applications/ && open /Applications/${SCHEME}.app"
-echo "If macOS asks for confirmation: Control-click the app in Finder and choose Open."
+echo "ZIP: $DIST/MyMonitor.zip"
+echo "DMG: $DIST/MyMonitor.dmg"
+echo "The included installer removes the quarantine flag and opens the app; it does not change privacy permissions."

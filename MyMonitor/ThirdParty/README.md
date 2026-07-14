@@ -34,4 +34,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-MyMenu uses this code only for external-monitor brightness via MCCS VCP `0x10` (luminance). The app is not affiliated with MonitorControl.
+MyMonitor uses this code only for external-monitor brightness via MCCS VCP `0x10` (luminance). The app is not affiliated with MonitorControl.

@@ -1,19 +1,16 @@
-# MyMenu
+# MyMonitor
 
-MyMenu is a small macOS menu bar utility for controlling the brightness of external displays. It uses the best available control path for each display and keeps the built-in display untouched.
+MyMonitor is a small, local-first macOS menu-bar utility for external-display brightness. It uses the best available control path for each display and leaves the built-in display untouched.
 
-> Early open-source release. External-display brightness is the stable core. Window snapping and the Alt-Tab switcher are included as experimental features and depend on macOS privacy permissions.
+It also includes two opt-in window tools: window snapping and an Option–Tab switcher. The app explains both features during first-run onboarding and asks for macOS privacy access only when you enable them.
 
 ## What it does
 
-- **Hardware brightness (DDC/CI):** writes the monitor's luminance value when the display and connection expose DDC.
-- **Software gamma:** applies a per-display gamma multiplier when hardware brightness is unavailable.
-- **Screen overlay:** dims the external display with a translucent overlay as a reliable fallback, including common HDMI-dongle setups.
-- **Recording preview:** temporarily adds a visible overlay so dimming is present in screen recordings even when the active tier is gamma or hardware brightness.
-- **Window snapping (experimental):** `Control-Option-Left/Right` snaps the focused window to a half and `Control-Option-Up/Down` maximizes or centers it.
-- **Window switcher (experimental):** `Option-Tab` and `Option-Shift-Tab` cycle through visible windows and select on Option release.
-
-The app does not use an account, network service, analytics, or cloud storage. Display preferences are stored locally in `UserDefaults`.
+- **External brightness:** DDC/CI hardware control, then software gamma, then a screen overlay fallback.
+- **Window snapping:** `Control-Option-Left/Right` snaps the focused window; Up/Down maximizes or centers it.
+- **Option–Tab switcher:** cycles through visible windows and selects on Option release.
+- **Recording preview:** adds a capture-visible dimming overlay for product demos.
+- **Local-first:** no account, analytics, network service, or cloud storage. Preferences live in `UserDefaults`.
 
 ## Requirements
 
@@ -21,79 +18,71 @@ The app does not use an account, network service, analytics, or cloud storage. D
 - Xcode **26** for development
 - An external display for brightness control
 
-DDC support is implemented for Apple Silicon through the adapted MonitorControl bridge. Gamma and overlay fallbacks can still be used when DDC is unavailable.
+The DDC path uses private macOS display interfaces and may need maintenance after future macOS updates. MyMonitor does not bypass privacy controls.
 
-The DDC path uses private macOS display interfaces, so it may need maintenance after future macOS updates. MyMenu does not bypass macOS privacy controls.
-
-## Build and run
+## Build from source
 
 ```bash
-git clone https://github.com/kartikkabadi/MyMenu.git
-cd MyMenu
-./scripts/generate_xcodeproj.sh
-open MyMenu.xcodeproj
+git clone https://github.com/kartikkabadi/MyMonitor.git
+cd MyMonitor
+./scripts/build.sh
 ```
 
-Select the `MyMenu` scheme and run it from Xcode. For a local Release package:
+The project is dependency-free. `scripts/generate_xcodeproj.sh` discovers every Swift file under `MyMonitor/`, so adding a source file does not require Xcode project bookkeeping.
+
+Open `MyMonitor.xcodeproj` if you want to run from Xcode. For a local release package:
 
 ```bash
 ./scripts/package-local.sh
 ```
 
-The package script creates `dist/MyMenu.zip` and, when available, `dist/MyMenu.dmg`. Local builds are ad hoc signed and are not notarized. Open a locally built app from Finder with Control-click → **Open** if macOS asks for confirmation.
+This creates `dist/MyMonitor.zip` and `dist/MyMonitor.dmg`. Both contain `Install MyMonitor.command`, which copies the app to `/Applications` (or `~/Applications` when needed), removes the quarantine flag from this locally built package, and launches the app. It does not grant Accessibility or Screen Recording access for you.
 
-## Privacy permissions
+Local releases are ad hoc signed and not notarized because notarization requires a paid Apple Developer account. Review the source before running any build.
 
-Brightness control does not require special privacy permissions. The optional window features do:
+## Fresh permissions test
 
-- **Accessibility:** required to move, resize, and focus windows.
-- **Screen Recording:** required for macOS to provide the window list used by the switcher.
-
-Enable each feature in the MyMenu panel, then follow the macOS prompt. If a permission was granted after the app was running, bring MyMenu to the front or restart it so the status refreshes.
-
-### Recording a demo
-
-Screen recording captures macOS-rendered pixels. Hardware brightness and gamma can change the physical display after those pixels are captured, so a recording may look unchanged even while the monitor visibly dims. Enable **Show Dimming in Recordings** in the MyMenu panel before recording. MyMenu adds a capture-visible overlay for the session; disable it afterward for normal brightness behavior.
-
-For a repeatable demo launch, the same mode can be enabled without clicking the panel:
+To remove this app's saved preferences and TCC entries before testing onboarding again:
 
 ```bash
-MYMENU_SCREEN_RECORDING_PREVIEW=1 /Applications/MyMenu.app/Contents/MacOS/MyMenu
+./scripts/reset-permissions.sh
 ```
 
-## Display behavior
+Brightness control does not need special privacy access. Optional window tools use:
 
-For each external display, MyMenu probes these tiers in order:
+- **Accessibility** to move, resize, and focus windows.
+- **Screen Recording** to read the window list used by the switcher.
 
-1. DDC/CI hardware luminance
-2. Software gamma
-3. Screen overlay
+If Screen Recording is missing, MyMonitor opens the correct System Settings pane. Bring the app back to the front after granting access so the status refreshes.
 
-USB-C → HDMI adapters often do not pass DDC/CI. That is expected; MyMenu should fall back to the overlay tier. For hardware control, enable DDC/CI in the monitor's on-screen display and try a direct USB-C/DisplayPort connection.
-
-## Development
-
-The project is intentionally dependency-free. Swift sources are discovered by `scripts/generate_xcodeproj.sh`, so adding a Swift file under `MyMenu/` is enough for the generated project to include it.
-
-Useful local checks:
+For a repeatable recording demo:
 
 ```bash
-xcodebuild -project MyMenu.xcodeproj \
-  -scheme MyMenu \
-  -configuration Debug \
-  -sdk macosx \
-  -derivedDataPath build/DerivedData \
-  CODE_SIGNING_ALLOWED=NO \
-  build
+MYMONITOR_SCREEN_RECORDING_PREVIEW=1 /Applications/MyMonitor.app/Contents/MacOS/MyMonitor
+```
+
+## Website and Whop checkout
+
+The landing page lives in `website/` and is served by the Cloudflare Worker in `worker.js` at [mymonitor.kartikkabadi.com](https://mymonitor.kartikkabadi.com). Wrangler provisions that hostname as a Cloudflare Custom Domain. The `/buy` route redirects to a Whop checkout URL held as a Worker secret, so the checkout URL never needs to be committed to the open-source repository.
+
+```bash
+wrangler secret put WHOP_CHECKOUT_URL
+./scripts/deploy-site.sh
+```
+
+The secret must be the complete Whop checkout URL, including `https://`. The deploy script accepts an already-stored secret or securely updates it from a `WHOP_CHECKOUT_URL` environment variable without printing the value. If you only want to preview the static page locally, serve `website/` with any static file server.
+
+## Development checks
+
+```bash
+./scripts/build.sh
 git diff --check
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and [SECURITY.md](SECURITY.md) for responsible security reports.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [docs/DESK_TEST_RESULTS.md](docs/DESK_TEST_RESULTS.md) for contribution and real-Mac validation notes.
 
-## Third-party code
+## Third-party code and license
 
-DDC support is adapted from [MonitorControl](https://github.com/MonitorControl/MonitorControl) under the MIT License. The attribution and license text are in [MyMenu/ThirdParty/README.md](MyMenu/ThirdParty/README.md).
+DDC support is adapted from [MonitorControl](https://github.com/MonitorControl/MonitorControl) under the MIT License. Attribution and license text are in [MyMonitor/ThirdParty/README.md](MyMonitor/ThirdParty/README.md).
 
-## License
-
-MyMenu is released under the [MIT License](LICENSE). Third-party components retain their original licenses and notices.
+MyMonitor is released under the [MIT License](LICENSE). Third-party components retain their original licenses and notices.

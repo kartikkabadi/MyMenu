@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Generates MyMenu.xcodeproj from source tree (no xcodegen required).
+# Generates MyMonitor.xcodeproj from source tree (no xcodegen required).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PROJ="$ROOT/MyMenu.xcodeproj"
+PROJ="$ROOT/MyMonitor.xcodeproj"
 mkdir -p "$PROJ"
 
 id() {
@@ -29,13 +29,13 @@ while IFS= read -r file; do
   if [[ -n "$file" ]]; then
     SWIFT_FILES+=("$file")
   fi
-done < <(find "$ROOT/MyMenu" -name '*.swift' | sort)
+done < <(find "$ROOT/MyMonitor" -name '*.swift' | sort)
 FILE_REFS=""
 BUILD_FILES=""
 SOURCES_FILES=""
 GROUP_CHILDREN=""
 for f in "${SWIFT_FILES[@]}"; do
-  rel_to_group="${f#$ROOT/MyMenu/}"
+  rel_to_group="${f#$ROOT/MyMonitor/}"
   fid=$(id "file-reference:$rel_to_group")
   bid=$(id "build-file:$rel_to_group")
   FILE_REFS+="
@@ -57,16 +57,16 @@ cat > "$PROJ/project.pbxproj" <<EOF
 	objectVersion = 56;
 	objects = {
 $FILE_REFS
-		$PRODUCT_REF /* MyMenu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMenu.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		$PRODUCT_REF /* MyMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		$CORE_DISPLAY_REF /* CoreDisplay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreDisplay.framework; path = System/Library/Frameworks/CoreDisplay.framework; sourceTree = SDKROOT; };
 		$CORE_DISPLAY_BUILD /* CoreDisplay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = $CORE_DISPLAY_REF /* CoreDisplay.framework */; };
 		INFO_PLIST /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		ENTITLEMENTS /* MyMenu.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMenu.entitlements; sourceTree = "<group>"; };
+		ENTITLEMENTS /* MyMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMonitor.entitlements; sourceTree = "<group>"; };
 		BRIDGING /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
 $BUILD_FILES
-		$TARGET_ID /* MyMenu */ = {
+		$TARGET_ID /* MyMonitor */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = $CONFIG_LIST_TGT /* Build configuration list for PBXNativeTarget "MyMenu" */;
+			buildConfigurationList = $CONFIG_LIST_TGT /* Build configuration list for PBXNativeTarget "MyMonitor" */;
 			buildPhases = (
 				$SOURCES_PHASE /* Sources */,
 				$FRAMEWORKS_PHASE /* Frameworks */,
@@ -75,9 +75,9 @@ $BUILD_FILES
 			);
 			dependencies = (
 			);
-			name = MyMenu;
-			productName = MyMenu;
-			productReference = $PRODUCT_REF /* MyMenu.app */;
+			name = MyMonitor;
+			productName = MyMonitor;
+			productReference = $PRODUCT_REF /* MyMonitor.app */;
 			productType = "com.apple.product-type.application";
 		};
 		$PROJECT_ID /* Project object */ = {
@@ -87,7 +87,7 @@ $BUILD_FILES
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 			};
-			buildConfigurationList = $CONFIG_LIST_PROJ /* Build configuration list for PBXProject "MyMenu" */;
+			buildConfigurationList = $CONFIG_LIST_PROJ /* Build configuration list for PBXProject "MyMonitor" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -100,7 +100,7 @@ $BUILD_FILES
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				$TARGET_ID /* MyMenu */,
+				$TARGET_ID /* MyMonitor */,
 			);
 		};
 		$SOURCES_PHASE /* Sources */ = {
@@ -153,20 +153,20 @@ $SOURCES_FILES
 		$DEBUG_CFG_T /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = MyMenu/MyMenu.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MyMonitor/MyMonitor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MyMenu/Info.plist;
+				INFOPLIST_FILE = MyMonitor/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "\$(inherited) @executable_path/../Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mymenu.MyMenu;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mymonitor.MyMonitor;
 				PRODUCT_NAME = "\$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "MyMenu/ThirdParty/Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "MyMonitor/ThirdParty/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -174,25 +174,25 @@ $SOURCES_FILES
 		$RELEASE_CFG_T /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = MyMenu/MyMenu.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MyMonitor/MyMonitor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MyMenu/Info.plist;
+				INFOPLIST_FILE = MyMonitor/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "\$(inherited) @executable_path/../Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mymenu.MyMenu;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mymonitor.MyMonitor;
 				PRODUCT_NAME = "\$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "MyMenu/ThirdParty/Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "MyMonitor/ThirdParty/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		$CONFIG_LIST_PROJ /* Build configuration list for PBXProject "MyMenu" */ = {
+		$CONFIG_LIST_PROJ /* Build configuration list for PBXProject "MyMonitor" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				$DEBUG_CFG /* Debug */,
@@ -201,7 +201,7 @@ $SOURCES_FILES
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		$CONFIG_LIST_TGT /* Build configuration list for PBXNativeTarget "MyMenu" */ = {
+		$CONFIG_LIST_TGT /* Build configuration list for PBXNativeTarget "MyMonitor" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				$DEBUG_CFG_T /* Debug */,
@@ -213,7 +213,7 @@ $SOURCES_FILES
 		GROUP_ROOT = {
 			isa = PBXGroup;
 			children = (
-				GROUP_MYMENU /* MyMenu */,
+				GROUP_MYMONITOR /* MyMonitor */,
 				GROUP_PRODUCTS /* Products */,
 			);
 			sourceTree = "<group>";
@@ -221,19 +221,19 @@ $SOURCES_FILES
 		GROUP_PRODUCTS /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				$PRODUCT_REF /* MyMenu.app */,
+				$PRODUCT_REF /* MyMonitor.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		GROUP_MYMENU /* MyMenu */ = {
+		GROUP_MYMONITOR /* MyMonitor */ = {
 			isa = PBXGroup;
 			children = (
 				INFO_PLIST /* Info.plist */,
-				ENTITLEMENTS /* MyMenu.entitlements */,
+				ENTITLEMENTS /* MyMonitor.entitlements */,
 $GROUP_CHILDREN
 			);
-			path = MyMenu;
+			path = MyMonitor;
 			sourceTree = "<group>";
 		};
 	};

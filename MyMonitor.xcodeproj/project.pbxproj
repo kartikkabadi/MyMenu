@@ -20,18 +20,19 @@
 		405611d520f4fd811efa2c2d /* BrightnessDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design/BrightnessDesign.swift"; sourceTree = "<group>"; };
 		e1a268f131720890304cc0e6 /* PopoverAnimationToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design/PopoverAnimationToken.swift"; sourceTree = "<group>"; };
 		056359415e281b168f890319 /* PopoverAppearModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design/PopoverAppearModifier.swift"; sourceTree = "<group>"; };
-		8f0a4e6bb4db82c174ab69c6 /* MyMenuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MyMenuApp.swift"; sourceTree = "<group>"; };
+		8451455b6661353723464dfd /* MyMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MyMonitorApp.swift"; sourceTree = "<group>"; };
 		4ff1b52dd7415371e3cdac92 /* PopoverWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PopoverWindowController.swift"; sourceTree = "<group>"; };
 		50485432d5ff66b0fdcbb465 /* Arm64DDC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ThirdParty/Arm64DDC.swift"; sourceTree = "<group>"; };
 		e635c7eb2d07da1953179aaf /* BrightnessPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/BrightnessPopoverView.swift"; sourceTree = "<group>"; };
 		21242883bc1cfcf1495221fc /* ExternalBrightnessSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/ExternalBrightnessSlider.swift"; sourceTree = "<group>"; };
 		8b1a60e206485331b3e81294 /* GlassBrightnessControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/GlassBrightnessControl.swift"; sourceTree = "<group>"; };
+		149a314f1055171e469a9a7d /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/OnboardingView.swift"; sourceTree = "<group>"; };
 		45a915429b1df55c0831d076 /* WindowSwitcherHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/WindowSwitcherHUDView.swift"; sourceTree = "<group>"; };
-		9446222969d6df045e92face /* MyMenu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMenu.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9446222969d6df045e92face /* MyMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		c22b816941bf3d8a123dbf0d /* CoreDisplay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreDisplay.framework; path = System/Library/Frameworks/CoreDisplay.framework; sourceTree = SDKROOT; };
 		c5549c34fe08563f20571f9f /* CoreDisplay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = c22b816941bf3d8a123dbf0d /* CoreDisplay.framework */; };
 		INFO_PLIST /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		ENTITLEMENTS /* MyMenu.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMenu.entitlements; sourceTree = "<group>"; };
+		ENTITLEMENTS /* MyMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMonitor.entitlements; sourceTree = "<group>"; };
 		BRIDGING /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
 
 		6dc8acf5d57e224f8163f195 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = b7332a3fd4068af672084b1c /* AppDelegate.swift */; };
@@ -48,16 +49,17 @@
 		85a657e065b64cf1e8dfbc89 /* BrightnessDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405611d520f4fd811efa2c2d /* BrightnessDesign.swift */; };
 		ee77733d5840c92e6717ace6 /* PopoverAnimationToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = e1a268f131720890304cc0e6 /* PopoverAnimationToken.swift */; };
 		cfd52b565969ef31df2e1d9c /* PopoverAppearModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056359415e281b168f890319 /* PopoverAppearModifier.swift */; };
-		dd5cee1f26ff539f1db35f12 /* MyMenuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8f0a4e6bb4db82c174ab69c6 /* MyMenuApp.swift */; };
+		d0bbbabb54eefb2390a2e79b /* MyMonitorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8451455b6661353723464dfd /* MyMonitorApp.swift */; };
 		8d4d998b523839ed58f2d0d4 /* PopoverWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ff1b52dd7415371e3cdac92 /* PopoverWindowController.swift */; };
 		46d82575e438a4974c69a3ca /* Arm64DDC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50485432d5ff66b0fdcbb465 /* Arm64DDC.swift */; };
 		f1ea75582ae27afa712d1dcc /* BrightnessPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = e635c7eb2d07da1953179aaf /* BrightnessPopoverView.swift */; };
 		262931bf164a840552c26cfb /* ExternalBrightnessSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21242883bc1cfcf1495221fc /* ExternalBrightnessSlider.swift */; };
 		eecd509fd465d30060685e46 /* GlassBrightnessControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8b1a60e206485331b3e81294 /* GlassBrightnessControl.swift */; };
+		b342c986d94f89fde7f5ba92 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149a314f1055171e469a9a7d /* OnboardingView.swift */; };
 		e64e426a58f27892e6cf9666 /* WindowSwitcherHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45a915429b1df55c0831d076 /* WindowSwitcherHUDView.swift */; };
-		34a04005bcaf206eec990bd9 /* MyMenu */ = {
+		34a04005bcaf206eec990bd9 /* MyMonitor */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = c9ac0e5561b76df225864e4f /* Build configuration list for PBXNativeTarget "MyMenu" */;
+			buildConfigurationList = c9ac0e5561b76df225864e4f /* Build configuration list for PBXNativeTarget "MyMonitor" */;
 			buildPhases = (
 				d626f04df571b9bb2451cbfe /* Sources */,
 				951ddecb505d289b8bc956e6 /* Frameworks */,
@@ -66,9 +68,9 @@
 			);
 			dependencies = (
 			);
-			name = MyMenu;
-			productName = MyMenu;
-			productReference = 9446222969d6df045e92face /* MyMenu.app */;
+			name = MyMonitor;
+			productName = MyMonitor;
+			productReference = 9446222969d6df045e92face /* MyMonitor.app */;
 			productType = "com.apple.product-type.application";
 		};
 		244210e48437b6556980a702 /* Project object */ = {
@@ -78,7 +80,7 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 			};
-			buildConfigurationList = 810d04fac018f0d6b4c10aab /* Build configuration list for PBXProject "MyMenu" */;
+			buildConfigurationList = 810d04fac018f0d6b4c10aab /* Build configuration list for PBXProject "MyMonitor" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -91,7 +93,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				34a04005bcaf206eec990bd9 /* MyMenu */,
+				34a04005bcaf206eec990bd9 /* MyMonitor */,
 			);
 		};
 		d626f04df571b9bb2451cbfe /* Sources */ = {
@@ -113,12 +115,13 @@
 				85a657e065b64cf1e8dfbc89 /* BrightnessDesign.swift in Sources */,
 				ee77733d5840c92e6717ace6 /* PopoverAnimationToken.swift in Sources */,
 				cfd52b565969ef31df2e1d9c /* PopoverAppearModifier.swift in Sources */,
-				dd5cee1f26ff539f1db35f12 /* MyMenuApp.swift in Sources */,
+				d0bbbabb54eefb2390a2e79b /* MyMonitorApp.swift in Sources */,
 				8d4d998b523839ed58f2d0d4 /* PopoverWindowController.swift in Sources */,
 				46d82575e438a4974c69a3ca /* Arm64DDC.swift in Sources */,
 				f1ea75582ae27afa712d1dcc /* BrightnessPopoverView.swift in Sources */,
 				262931bf164a840552c26cfb /* ExternalBrightnessSlider.swift in Sources */,
 				eecd509fd465d30060685e46 /* GlassBrightnessControl.swift in Sources */,
+				b342c986d94f89fde7f5ba92 /* OnboardingView.swift in Sources */,
 				e64e426a58f27892e6cf9666 /* WindowSwitcherHUDView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -165,20 +168,20 @@
 		f69051e9b8c43ad4e9ed711e /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = MyMenu/MyMenu.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MyMonitor/MyMonitor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MyMenu/Info.plist;
+				INFOPLIST_FILE = MyMonitor/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mymenu.MyMenu;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mymonitor.MyMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "MyMenu/ThirdParty/Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "MyMonitor/ThirdParty/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -186,25 +189,25 @@
 		13c0bbe6af4fb7508857148c /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = MyMenu/MyMenu.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MyMonitor/MyMonitor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MyMenu/Info.plist;
+				INFOPLIST_FILE = MyMonitor/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mymenu.MyMenu;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mymonitor.MyMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "MyMenu/ThirdParty/Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "MyMonitor/ThirdParty/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		810d04fac018f0d6b4c10aab /* Build configuration list for PBXProject "MyMenu" */ = {
+		810d04fac018f0d6b4c10aab /* Build configuration list for PBXProject "MyMonitor" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				18ec20a4eaeb4e104c0ec275 /* Debug */,
@@ -213,7 +216,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		c9ac0e5561b76df225864e4f /* Build configuration list for PBXNativeTarget "MyMenu" */ = {
+		c9ac0e5561b76df225864e4f /* Build configuration list for PBXNativeTarget "MyMonitor" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				f69051e9b8c43ad4e9ed711e /* Debug */,
@@ -225,7 +228,7 @@
 		GROUP_ROOT = {
 			isa = PBXGroup;
 			children = (
-				GROUP_MYMENU /* MyMenu */,
+				GROUP_MYMONITOR /* MyMonitor */,
 				GROUP_PRODUCTS /* Products */,
 			);
 			sourceTree = "<group>";
@@ -233,16 +236,16 @@
 		GROUP_PRODUCTS /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9446222969d6df045e92face /* MyMenu.app */,
+				9446222969d6df045e92face /* MyMonitor.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		GROUP_MYMENU /* MyMenu */ = {
+		GROUP_MYMONITOR /* MyMonitor */ = {
 			isa = PBXGroup;
 			children = (
 				INFO_PLIST /* Info.plist */,
-				ENTITLEMENTS /* MyMenu.entitlements */,
+				ENTITLEMENTS /* MyMonitor.entitlements */,
 
 				b7332a3fd4068af672084b1c /* AppDelegate.swift */,
 				4ce974d343a092d39c150dd5 /* AppPreferences.swift */,
@@ -258,15 +261,16 @@
 				405611d520f4fd811efa2c2d /* BrightnessDesign.swift */,
 				e1a268f131720890304cc0e6 /* PopoverAnimationToken.swift */,
 				056359415e281b168f890319 /* PopoverAppearModifier.swift */,
-				8f0a4e6bb4db82c174ab69c6 /* MyMenuApp.swift */,
+				8451455b6661353723464dfd /* MyMonitorApp.swift */,
 				4ff1b52dd7415371e3cdac92 /* PopoverWindowController.swift */,
 				50485432d5ff66b0fdcbb465 /* Arm64DDC.swift */,
 				e635c7eb2d07da1953179aaf /* BrightnessPopoverView.swift */,
 				21242883bc1cfcf1495221fc /* ExternalBrightnessSlider.swift */,
 				8b1a60e206485331b3e81294 /* GlassBrightnessControl.swift */,
+				149a314f1055171e469a9a7d /* OnboardingView.swift */,
 				45a915429b1df55c0831d076 /* WindowSwitcherHUDView.swift */,
 			);
-			path = MyMenu;
+			path = MyMonitor;
 			sourceTree = "<group>";
 		};
 	};
