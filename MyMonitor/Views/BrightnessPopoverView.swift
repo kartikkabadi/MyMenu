@@ -9,14 +9,16 @@ struct BrightnessPopoverView: View {
   @State private var hasAccessibility = PermissionManager.shared.hasAccessibilityAccess
   @State private var hasScreenRecording = PermissionManager.shared.hasScreenRecordingAccess
   @State private var showOnboarding = !AppPreferences.hasCompletedOnboarding
+  @AppStorage(AppPreferences.isWindowSnappingEnabledKey) private var windowSnappingEnabled = false
+  @AppStorage(AppPreferences.isWindowSwitcherEnabledKey) private var windowSwitcherEnabled = false
 
   var onOnboardingComplete: (() -> Void)?
 
   private var windowSnappingBinding: Binding<Bool> {
     Binding(
-      get: { AppPreferences.isWindowSnappingEnabled },
+      get: { windowSnappingEnabled },
       set: { enabled in
-        AppPreferences.isWindowSnappingEnabled = enabled
+        windowSnappingEnabled = enabled
         AppDelegate.shared?.updateWindowSnappingState()
         if enabled && !PermissionManager.shared.hasAccessibilityAccess {
           PermissionManager.shared.requestAccessibilityAccess()
@@ -28,9 +30,9 @@ struct BrightnessPopoverView: View {
 
   private var windowSwitcherBinding: Binding<Bool> {
     Binding(
-      get: { AppPreferences.isWindowSwitcherEnabled },
+      get: { windowSwitcherEnabled },
       set: { enabled in
-        AppPreferences.isWindowSwitcherEnabled = enabled
+        windowSwitcherEnabled = enabled
         AppDelegate.shared?.updateWindowSwitcherState()
         if enabled {
           if !PermissionManager.shared.hasAccessibilityAccess {

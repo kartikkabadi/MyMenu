@@ -19,7 +19,19 @@ if ! xcodebuild -version &>/dev/null; then
 fi
 
 echo "==> Building $SCHEME ($CONFIG)..."
-xcodebuild \
+run_xcodebuild() {
+  # Xcode 26's SwiftBuild service can block when its external-tool stdout is
+  # attached to a pipe. A PTY keeps packaging deterministic in shells.
+  if command -v script >/dev/null 2>&1; then
+    script -q /dev/null xcodebuild "$@" | perl -pe 's/\r//g; s/\x04\x08\x08//g'
+    local status="${PIPESTATUS[0]}"
+    return "$status"
+  else
+    xcodebuild "$@"
+  fi
+}
+
+run_xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
   -configuration "$CONFIG" \

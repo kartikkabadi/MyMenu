@@ -63,7 +63,7 @@ MYMONITOR_SCREEN_RECORDING_PREVIEW=1 /Applications/MyMonitor.app/Contents/MacOS/
 
 ## Website and Whop checkout
 
-The landing page lives in `website/` and is served by the Cloudflare Worker in `worker.js`. The `/buy` route redirects to a Whop checkout URL held as a Worker secret, so the checkout URL never needs to be committed to the open-source repository.
+The landing page lives in `website/` and is served by the Cloudflare Worker in `worker.js` at [mymonitor.kartikkabadi.com](https://mymonitor.kartikkabadi.com). Wrangler provisions that hostname as a Cloudflare Custom Domain. The `/buy` route redirects to a Whop checkout URL held as a Worker secret, so the checkout URL never needs to be committed to the open-source repository.
 
 ```bash
 wrangler secret put WHOP_CHECKOUT_URL

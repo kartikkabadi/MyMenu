@@ -14,7 +14,19 @@ class PermissionManager {
 
   func requestAccessibilityAccess() {
     let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-    AXIsProcessTrustedWithOptions(options as CFDictionary)
+    _ = AXIsProcessTrustedWithOptions(options as CFDictionary)
+    openAccessibilitySettings()
+  }
+
+  func openAccessibilitySettings() {
+    let urls = [
+      "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+      "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
+    ].compactMap(URL.init(string:))
+
+    for url in urls where NSWorkspace.shared.open(url) {
+      break
+    }
   }
 
   var hasScreenRecordingAccess: Bool {
