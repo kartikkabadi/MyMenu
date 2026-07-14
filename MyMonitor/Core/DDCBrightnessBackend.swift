@@ -8,7 +8,7 @@ private let ddcLuminanceVCP: UInt8 = 0x10
 final class DDCBrightnessBackend: BrightnessBackend {
   static let tier: BrightnessTier = .ddc
 
-  private static let globalDDCQueue = DispatchQueue(label: "MyMenu.globalDDC")
+  private static let globalDDCQueue = DispatchQueue(label: "MyMonitor.globalDDC")
   private static let writeDebounceInterval: DispatchTimeInterval = .milliseconds(150)
 
   private let displayID: CGDirectDisplayID

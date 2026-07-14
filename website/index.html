@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050608" />
+    <meta name="description" content="MyMonitor is a tiny macOS menu-bar utility for external display brightness and optional window shortcuts." />
+    <meta property="og:title" content="MyMonitor — the calm way to control your display" />
+    <meta property="og:description" content="A native macOS utility for external monitor brightness, window snapping, and Option–Tab switching." />
+    <title>MyMonitor — a calmer Mac</title>
+    <link rel="icon" href="/assets/my-monitor-mark.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="MyMonitor home">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span>MyMonitor</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#source">Source</a>
+        <a class="nav-buy" href="/buy">Buy for $2.99 <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero shell">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="status-dot"></span> A tiny native utility for macOS</p>
+          <h1>Make your Mac<br /><em>feel quieter.</em></h1>
+          <p class="hero-lede">MyMonitor puts external-display brightness and a few genuinely useful window shortcuts in one clear menu-bar panel.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="/buy">Buy MyMonitor <span>· $2.99</span> <b aria-hidden="true">↗</b></a>
+            <a class="button text-button" href="https://github.com/kartikkabadi/MyMenu">Build it yourself <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="microcopy">Open source under MIT · No account · No analytics</p>
+        </div>
+
+        <div class="hero-product" aria-label="Preview of the MyMonitor menu-bar panel">
+          <div class="ambient ambient-one"></div>
+          <div class="ambient ambient-two"></div>
+          <div class="mock-menubar"><span>9:41</span><span class="menu-icons">◌　⌁　◉　✦</span></div>
+          <div class="mock-panel">
+            <div class="mock-header">
+              <div class="sun-icon">☼</div>
+              <div><strong>External display</strong><small>MyMonitor</small></div>
+              <i></i>
+            </div>
+            <div class="mock-slider"><span>◐</span><div><b></b><b></b><b></b><b></b><b></b><i></i></div><span>☀</span></div>
+            <small class="mock-tier">Software gamma</small>
+            <div class="mock-card">
+              <label>Window tools</label>
+              <div class="mock-row"><span>▣　Window snapping</span><i class="switch on"></i></div>
+              <div class="mock-row"><span>▱　Option–Tab switcher</span><i class="switch"></i></div>
+            </div>
+            <div class="mock-row mock-record"><span>◉　Show dimming in recordings</span><i class="switch"></i></div>
+            <div class="mock-quit">⌁　Quit MyMonitor</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="proof-strip shell" aria-label="Product principles">
+        <div><strong>Local by default</strong><span>Your display settings stay on your Mac.</span></div>
+        <div><strong>Built for the menu bar</strong><span>Open, adjust, disappear.</span></div>
+        <div><strong>$2.99 if it helps</strong><span>Open source if you want to build it.</span></div>
+      </section>
+
+      <section class="section shell" id="features">
+        <div class="section-heading"><p class="eyebrow">The useful bits</p><h2>Small surface area.<br /><em>Surprisingly capable.</em></h2></div>
+        <div class="feature-grid">
+          <article class="feature feature-large"><span class="feature-number">01</span><div class="feature-icon">☼</div><h3>External brightness</h3><p>Hardware DDC when your display supports it, then a software gamma or overlay fallback when it does not.</p><span class="feature-note">DDC / gamma / overlay</span></article>
+          <article class="feature"><span class="feature-number">02</span><div class="feature-icon">⌘</div><h3>Window snapping</h3><p>Control–Option–arrow moves the focused window into place and the same shortcut restores it.</p></article>
+          <article class="feature"><span class="feature-number">03</span><div class="feature-icon">⇥</div><h3>Option–Tab</h3><p>Cycle through visible windows with a lightweight HUD. It stays off until you choose it.</p></article>
+          <article class="feature feature-wide"><span class="feature-number">04</span><div><h3>Permission-aware</h3><p>MyMonitor explains why Accessibility or Screen Recording is needed and only asks when an optional feature is enabled.</p></div><span class="permission-pill">You stay in control</span></article>
+        </div>
+      </section>
+
+      <section class="section split-section shell" id="how-it-works">
+        <div class="section-heading"><p class="eyebrow">The first minute</p><h2>Clear from the<br /><em>first launch.</em></h2></div>
+        <div class="steps">
+          <div class="step"><span>01</span><h3>Open the sun</h3><p>MyMonitor lives in the menu bar, not in a window you have to manage.</p></div>
+          <div class="step"><span>02</span><h3>Slide to taste</h3><p>Adjust an external display with a familiar control and see which path is active.</p></div>
+          <div class="step"><span>03</span><h3>Turn on more</h3><p>Optional window tools are introduced in onboarding and ask for access only when needed.</p></div>
+        </div>
+      </section>
+
+      <section class="source-section" id="source">
+        <div class="shell source-layout">
+          <div><p class="eyebrow">Two honest ways to use it</p><h2>Buy the shortcut.<br /><em>Keep the source.</em></h2><p>MyMonitor is MIT-licensed and built with Swift, AppKit, and SwiftUI. Buy it for $2.99 to support the project and skip the build steps, or clone the repo and make it yours.</p></div>
+          <div class="source-actions"><a class="button primary" href="/buy">Get MyMonitor · $2.99 <b aria-hidden="true">↗</b></a><a class="button outline" href="https://github.com/kartikkabadi/MyMenu">View on GitHub <span aria-hidden="true">↗</span></a><small>Whop checkout · one-time support purchase</small></div>
+        </div>
+      </section>
+
+      <section class="faq-section shell">
+        <div class="section-heading"><p class="eyebrow">Good to know</p><h2>No weird<br /><em>surprises.</em></h2></div>
+        <div class="faq-list">
+          <details><summary>Does it change my built-in display?</summary><p>No. MyMonitor only presents external displays for brightness control.</p></details>
+          <details><summary>Why is the app not notarized?</summary><p>This release is made for a free Apple Developer account, so it is ad hoc signed and not notarized. The buyer installer removes the quarantine flag; macOS privacy access remains your choice.</p></details>
+          <details><summary>What does the $2.99 purchase include?</summary><p>A ready-to-run MyMonitor package and a way to support ongoing maintenance. The source remains open under the MIT License.</p></details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer shell"><div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>MyMonitor</span></div><p>Made for a calmer Mac · <span id="year"></span></p><div><a href="https://github.com/kartikkabadi/MyMenu">GitHub</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div></footer>
+    <script src="/script.js" defer></script>
+  </body>
+</html>

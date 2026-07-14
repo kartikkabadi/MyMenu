@@ -1,19 +1,19 @@
-# Contributing to MyMenu
+# Contributing to MyMonitor
 
-Thanks for helping improve MyMenu. Small, focused pull requests are easiest to review.
+Thanks for helping improve MyMonitor. Small, focused pull requests are easiest to review.
 
 ## Before you start
 
 1. Search existing issues and pull requests.
-2. For a bug, include the macOS version, Mac architecture, display connection, display mode, MyMenu tier, and the exact reproduction steps. Do not include screenshots or logs containing private window titles unless you have redacted them.
+2. For a bug, include the macOS version, Mac architecture, display connection, display mode, MyMonitor tier, and the exact reproduction steps. Do not include screenshots or logs containing private window titles unless you have redacted them.
 3. For a feature, explain the user problem and the smallest useful behavior.
 
 ## Local workflow
 
 ```bash
 ./scripts/generate_xcodeproj.sh
-xcodebuild -project MyMenu.xcodeproj \
-  -scheme MyMenu \
+xcodebuild -project MyMonitor.xcodeproj \
+  -scheme MyMonitor \
   -configuration Debug \
   -sdk macosx \
   -derivedDataPath build/DerivedData \

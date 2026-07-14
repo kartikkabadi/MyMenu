@@ -1,8 +1,8 @@
 import AppKit
 
-/// Menu-bar agent: AppKit status item + popover (matches One Menu architecture).
+/// Menu-bar agent: AppKit status item + SwiftUI glass panel.
 @main
-enum MyMenuLauncher {
+enum MyMonitorLauncher {
   static func main() {
     let app = NSApplication.shared
     let delegate = AppDelegate()

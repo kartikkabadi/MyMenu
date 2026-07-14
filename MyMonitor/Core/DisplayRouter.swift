@@ -23,7 +23,7 @@ struct ExternalDisplayItem: Identifiable, Equatable {
 final class DisplayRouter {
   private(set) var displays: [ExternalDisplayItem] = []
   private(set) var isScreenRecordingPreviewEnabled =
-    ProcessInfo.processInfo.environment["MYMENU_SCREEN_RECORDING_PREVIEW"] == "1"
+    ProcessInfo.processInfo.environment["MYMONITOR_SCREEN_RECORDING_PREVIEW"] == "1"
   private var backends: [CGDirectDisplayID: any BrightnessBackend] = [:]
   private var captureOverlayBackends: [CGDirectDisplayID: OverlayBrightnessBackend] = [:]
   private var reconfigureWorkItem: DispatchWorkItem?
@@ -330,7 +330,7 @@ final class DisplayRouter {
   // MARK: - Persistence
 
   private func prefsKey(_ suffix: String, displayID: CGDirectDisplayID) -> String {
-    "MyMenu.\(displayID).\(suffix)"
+    "MyMonitor.\(displayID).\(suffix)"
   }
 
   private func loadBrightness(displayID: CGDirectDisplayID) -> Double {

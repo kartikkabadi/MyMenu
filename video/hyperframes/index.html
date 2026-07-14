@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MyMonitor launch</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050608;color:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif}#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:radial-gradient(circle at 20% 8%,rgba(67,128,235,.24),transparent 36%),radial-gradient(circle at 80% 80%,rgba(25,52,98,.25),transparent 42%),#050608}.content{position:absolute;inset:72px;display:flex;flex-direction:column;justify-content:space-between}.intro{opacity:0;transform:translateY(36px)}.intro .brand{display:flex;align-items:center;gap:16px;font-size:32px;font-weight:700}.mark{display:grid;place-items:center;width:52px;height:52px;border:1px solid rgba(93,157,255,.5);border-radius:16px;color:#5d9dff}.title{margin-top:116px;font-size:76px;line-height:.98;font-weight:700;letter-spacing:-4px}.title em{color:#5d9dff;font-style:normal}.lede{max-width:750px;margin-top:28px;color:#9aa4b3;font-size:28px;line-height:1.35}.panel{align-self:center;width:760px;padding:28px;border:1px solid rgba(255,255,255,.16);border-radius:34px;background:rgba(14,17,24,.88);box-shadow:0 34px 90px rgba(0,0,0,.5);opacity:0;transform:translateY(80px) scale(.9)}.head{display:flex;align-items:center;gap:18px;padding:8px 8px 24px;font-size:28px}.head .sun{color:#5d9dff;font-size:36px}.head small{display:block;margin-top:4px;color:#8993a3;font-size:18px}.head .dot{width:12px;height:12px;margin-left:auto;border-radius:50%;background:#5d9dff}.slider{display:flex;align-items:center;gap:18px;padding:20px 10px;font-size:26px;color:#8b96a5}.track{position:relative;flex:1;height:8px;border-radius:10px;background:#313846}.track:before{content:"";display:block;width:64%;height:100%;border-radius:10px;background:#5d9dff}.track i{position:absolute;left:61%;top:-8px;width:24px;height:24px;border-radius:50%;background:white}.tier{margin:0 10px 22px 54px;color:#758196;font-size:16px}.tools{padding:18px;border:1px solid rgba(255,255,255,.1);border-radius:22px;background:rgba(255,255,255,.04)}.label{margin-bottom:6px;color:#8993a3;font-size:16px}.row{display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid rgba(255,255,255,.08);font-size:21px}.row:first-of-type{border-top:0}.switch{width:44px;height:25px;border-radius:20px;background:#3a414d}.switch.on{background:#327cf3}.record{margin-top:14px;padding:18px 6px 4px;color:#c4cbd6;font-size:20px}.outro{display:flex;justify-content:space-between;align-items:end;color:#7f8998;font-size:21px;opacity:0}.cta{padding:15px 22px;border-radius:14px;background:#327cf3;color:white;font-size:24px;font-weight:700}@keyframes in{to{opacity:1;transform:none}}@keyframes rise{to{opacity:1;transform:translateY(0) scale(1)}}
+  </style>
+</head>
+<body>
+  <div id="stage" data-composition-id="mymonitor-launch" data-start="0" data-duration="12" data-width="1080" data-height="1920">
+    <div class="content">
+      <div id="intro" class="intro clip" data-start="0" data-duration="4" data-track-index="0"><div class="brand"><span class="mark">✦</span> MyMonitor</div><div class="title">A calmer<br /><em>Mac.</em></div><div class="lede">External-display brightness and the useful window shortcuts you actually want.</div></div>
+      <div id="panel" class="panel clip" data-start="1.4" data-duration="8" data-track-index="1"><div class="head"><span class="sun">☼</span><div><b>External display</b><small>MyMonitor</small></div><span class="dot"></span></div><div class="slider"><span>◐</span><div class="track"><i></i></div><span>☀</span></div><div class="tier">Software gamma</div><div class="tools"><div class="label">Window tools</div><div class="row">Window snapping <span class="switch on"></span></div><div class="row">Option–Tab switcher <span class="switch"></span></div></div><div class="record">◉　Show dimming in recordings</div></div>
+      <div id="outro" class="outro clip" data-start="8" data-duration="4" data-track-index="2"><span>Open source under MIT · No account · No analytics</span><span class="cta">Buy for $2.99 ↗</span></div>
+    </div>
+    <script>
+      const tl = { pause() {}, seek(time) { document.querySelector('.intro').style.animation = time >= 0 ? 'in .8s forwards' : ''; document.querySelector('.panel').style.animation = time >= 1.4 ? 'rise .9s forwards' : ''; document.querySelector('.outro').style.animation = time >= 8 ? 'in .8s forwards' : ''; } };
+      window.__timelines = window.__timelines || {}; window.__timelines['mymonitor-launch'] = tl;
+    </script>
+  </div>
+</body>
+</html>

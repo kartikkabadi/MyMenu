@@ -1,6 +1,6 @@
 # Validation notes
 
-This document records the checks that are useful when validating MyMenu on a real Mac. Hardware brightness behavior varies by monitor, cable, adapter, display mode, and macOS privacy state, so the runtime checks below complement the build check.
+This document records the checks that are useful when validating MyMonitor on a real Mac. Hardware brightness behavior varies by monitor, cable, adapter, display mode, and macOS privacy state, so the runtime checks below complement the build check.
 
 ## Automated checks
 
@@ -18,11 +18,11 @@ This document records the checks that are useful when validating MyMenu on a rea
 | HDMI dongle without DDC/CI | Screen overlay fallback |
 | Extended desktop | External display dims; built-in display remains unchanged |
 | Mirrored desktop | The selected external display path remains stable during Space changes |
-| Quit MyMenu | Overlay windows are removed and temporary gamma changes are released |
+| Quit MyMonitor | Overlay windows are removed and temporary gamma changes are released |
 
 ## Window feature matrix
 
-Before testing, grant Accessibility to MyMenu. Also grant Screen Recording for the window switcher.
+Before testing, run `./scripts/reset-permissions.sh`, launch MyMonitor, complete onboarding with the left/right arrow keys, and grant permissions only when enabling the optional tools.
 
 | Feature | Shortcut | Expected result |
 | --- | --- | --- |
@@ -33,6 +33,6 @@ Before testing, grant Accessibility to MyMenu. Also grant Screen Recording for t
 | Window selection | Release Option | Selected app/window becomes active |
 | Recording preview | Enable **Show Dimming in Recordings** | Brightness changes are visible in a full-display recording |
 
-If a shortcut does not fire, check for a macOS or third-party shortcut conflict and confirm the feature is enabled in the MyMenu panel.
+If a shortcut does not fire, check for a macOS or third-party shortcut conflict and confirm the feature is enabled in the MyMonitor panel.
 
 For recording preview, use a full-display source for the display that contains the external monitor. A selected-window recording or a recording of a different display cannot include an overlay that belongs to the external display.

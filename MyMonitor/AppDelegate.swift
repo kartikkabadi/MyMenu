@@ -1,6 +1,6 @@
 import AppKit
 
-/// Menu-bar agent: `NSStatusItem` + `NSPopover` via `PopoverWindowController`.
+/// Menu-bar agent: `NSStatusItem` + a lightweight glass panel.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   static private(set) var shared: AppDelegate!
@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     if let button = statusItem.button {
-      let image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "MyMenu")
+      let image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "MyMonitor")
       image?.isTemplate = true
       button.image = image
       button.action = #selector(togglePopover(_:))
@@ -27,6 +27,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Start Window Management services
     WindowSnappingService.shared.start()
     WindowSwitcherService.shared.start()
+
+    // Explain the product before a fresh install asks for optional macOS
+    // privacy access. The same panel can be reopened from the status item.
+    guard !AppPreferences.hasCompletedOnboarding else { return }
+    DispatchQueue.main.async { [weak self] in
+      guard let self, let button = self.statusItem.button else { return }
+      self.popoverController.toggle(relativeTo: button)
+    }
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
