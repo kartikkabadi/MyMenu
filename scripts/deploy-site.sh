@@ -10,5 +10,10 @@ if [[ -z "${WHOP_CHECKOUT_URL:-}" ]]; then
   exit 1
 fi
 
+if [[ "$WHOP_CHECKOUT_URL" != https://* && "$WHOP_CHECKOUT_URL" != http://* ]]; then
+  echo "WHOP_CHECKOUT_URL must be an absolute http:// or https:// URL." >&2
+  exit 1
+fi
+
 echo "$WHOP_CHECKOUT_URL" | wrangler secret put WHOP_CHECKOUT_URL
 wrangler deploy
