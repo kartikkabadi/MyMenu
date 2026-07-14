@@ -3,7 +3,9 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/buy") {
-      const configuredCheckoutURL = String(env.WHOP_CHECKOUT_URL || "").trim();
+      const configuredCheckoutURL = String(env.WHOP_CHECKOUT_URL || "")
+        .trim()
+        .replace(/^(\"|')|("|')$/g, "");
       if (!configuredCheckoutURL) {
         return new Response(
           "Whop checkout is not configured yet. Set the WHOP_CHECKOUT_URL secret before deploying.",
@@ -13,7 +15,12 @@ export default {
 
       let checkoutURL;
       try {
-        checkoutURL = new URL(configuredCheckoutURL);
+        const checkoutCandidate = /^(https?):\/\//i.test(configuredCheckoutURL)
+          ? configuredCheckoutURL
+          : /^(www\.)?whop\.com\//i.test(configuredCheckoutURL)
+            ? `https://${configuredCheckoutURL}`
+            : configuredCheckoutURL;
+        checkoutURL = new URL(checkoutCandidate);
       } catch {
         return new Response(
           "Whop checkout is configured, but it is not a valid absolute URL. Update WHOP_CHECKOUT_URL and redeploy.",
