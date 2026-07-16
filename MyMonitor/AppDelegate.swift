@@ -27,7 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       persistence: SystemKeyboardShortcutPreferences()
     )
     let keyboardBrightnessCoordinator = KeyboardBrightnessCoordinator(
-      store: presentationStore
+      store: presentationStore,
+      configurationStore: configurationStore
     )
 
     self.presentationStore = presentationStore
