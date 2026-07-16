@@ -9,6 +9,7 @@ actor TestEngineClock: EngineClock {
 
   private var instant: EngineInstant
   private var waiters: [UUID: Waiter] = [:]
+  private var cancellationsBeforeRegistration: Set<UUID> = []
 
   init(now: EngineInstant = .zero) {
     instant = now
@@ -26,7 +27,11 @@ actor TestEngineClock: EngineClock {
     try await withTaskCancellationHandler(
       operation: {
         try await withCheckedThrowingContinuation { continuation in
-          waiters[id] = Waiter(deadline: deadline, continuation: continuation)
+          if cancellationsBeforeRegistration.remove(id) != nil {
+            continuation.resume(throwing: CancellationError())
+          } else {
+            waiters[id] = Waiter(deadline: deadline, continuation: continuation)
+          }
         }
       },
       onCancel: {
@@ -54,8 +59,15 @@ actor TestEngineClock: EngineClock {
     waiters.count
   }
 
+  func pendingCancellationCount() -> Int {
+    cancellationsBeforeRegistration.count
+  }
+
   private func cancelWaiter(_ id: UUID) {
-    guard let waiter = waiters.removeValue(forKey: id) else { return }
-    waiter.continuation.resume(throwing: CancellationError())
+    if let waiter = waiters.removeValue(forKey: id) {
+      waiter.continuation.resume(throwing: CancellationError())
+    } else {
+      cancellationsBeforeRegistration.insert(id)
+    }
   }
 }
