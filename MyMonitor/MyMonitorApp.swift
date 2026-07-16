@@ -1,6 +1,6 @@
 import AppKit
 
-/// Menu-bar agent: AppKit status item + SwiftUI glass panel.
+/// Menu-bar agent: AppKit status item with a SwiftUI-hosted native popover.
 @main
 enum MyMonitorLauncher {
   static func main() {

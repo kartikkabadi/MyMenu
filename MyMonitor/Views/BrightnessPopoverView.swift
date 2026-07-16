@@ -6,77 +6,49 @@ struct BrightnessPopoverView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      header
+      content
 
       Divider()
-        .opacity(0.35)
-
-      if store.monitors.isEmpty {
-        emptyState
-      } else {
-        monitorList
-      }
-
-      Divider()
-        .opacity(0.35)
 
       footer
     }
-    .frame(
-      width: BrightnessDesign.panelWidth,
-      height: BrightnessDesign.panelHeight
-    )
-    .background(.regularMaterial)
+    .frame(width: BrightnessDesign.popoverWidth)
+    .fixedSize(horizontal: false, vertical: true)
   }
 
-  private var header: some View {
-    HStack(spacing: 10) {
-      Image(systemName: "display.2")
-        .font(.system(size: 15, weight: .semibold))
-        .symbolRenderingMode(.hierarchical)
-        .frame(width: 24, height: 24)
-
-      VStack(alignment: .leading, spacing: 1) {
-        Text("MyMonitor")
-          .font(.system(size: 13, weight: .semibold))
-        Text("External display brightness")
-          .font(.system(size: 10, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
-
-      Spacer(minLength: 12)
-
-      Button {
-        store.refresh()
-      } label: {
-        Image(systemName: "arrow.clockwise")
-          .font(.system(size: 11, weight: .semibold))
-          .frame(width: 24, height: 24)
-          .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .foregroundStyle(.secondary)
-      .help("Refresh displays")
+  @ViewBuilder
+  private var content: some View {
+    if store.monitors.isEmpty {
+      emptyState
+    } else {
+      monitorList
     }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 12)
   }
 
+  @ViewBuilder
   private var monitorList: some View {
-    ScrollView {
-      VStack(spacing: 0) {
-        ForEach(store.monitors) { display in
-          MonitorBrightnessRow(display: display, store: store)
+    if store.monitors.count <= BrightnessDesign.maximumUnscrolledMonitorCount {
+      monitorRows
+    } else {
+      ScrollView {
+        monitorRows
+      }
+      .frame(height: BrightnessDesign.maximumMonitorListHeight)
+    }
+  }
 
-          if display.id != store.monitors.last?.id {
-            Divider()
-              .opacity(0.2)
-              .padding(.leading, 46)
-          }
+  private var monitorRows: some View {
+    VStack(spacing: 0) {
+      ForEach(store.monitors) { display in
+        MonitorBrightnessRow(display: display, store: store)
+
+        if display.id != store.monitors.last?.id {
+          Divider()
+            .opacity(0.2)
+            .padding(.leading, 46)
         }
       }
     }
-    .scrollIndicators(.never)
   }
 
   private var emptyState: some View {
@@ -85,37 +57,33 @@ struct BrightnessPopoverView: View {
         .font(.system(size: 30, weight: .regular))
         .symbolRenderingMode(.hierarchical)
         .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
 
       Text("No external display")
-        .font(.system(size: 13, weight: .semibold))
+        .font(.headline)
 
-      Text("Connect a monitor, then refresh.")
-        .font(.system(size: 11))
+      Text("Connect a monitor and MyMonitor will detect it.")
+        .font(.callout)
         .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .padding(24)
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal, 24)
+    .padding(.vertical, 28)
   }
 
   private var footer: some View {
     HStack {
-      let count = store.monitors.count
-      Text(count == 1 ? "1 monitor" : "\(count) monitors")
-        .font(.system(size: 10, weight: .medium))
-        .foregroundStyle(.secondary)
-
       Spacer()
 
       Button("Quit") {
         AppDelegate.shared?.quitApp()
       }
-      .buttonStyle(.plain)
-      .font(.system(size: 10, weight: .semibold))
-      .foregroundStyle(.secondary)
       .keyboardShortcut("q", modifiers: [.command])
+      .controlSize(.small)
     }
     .padding(.horizontal, 14)
-    .padding(.vertical, 10)
+    .padding(.vertical, 9)
   }
 }
 
