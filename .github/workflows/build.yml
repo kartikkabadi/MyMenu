@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Tests, frontend contract, and Xcode 26 builds
+    name: Tests, contracts, and Xcode 26 builds
     runs-on: macos-15
     timeout-minutes: 20
 
@@ -31,6 +31,9 @@ jobs:
 
       - name: Validate frontend contract
         run: bash scripts/validate_frontend_contract.sh
+
+      - name: Validate backend concurrency
+        run: bash scripts/validate_backend_concurrency.sh
 
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
