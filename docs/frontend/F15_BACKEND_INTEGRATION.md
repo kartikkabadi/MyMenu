@@ -1,201 +1,179 @@
 # F15 Asynchronous Display-Control Integration
 
-F15 makes the established frontend responsive and truthful while monitor capability discovery occurs. It changes backend execution and lifecycle, not product anatomy.
+F15 makes the established native frontend responsive and truthful while monitor capability discovery occurs. It changes backend execution, routing, and lifecycle—not product anatomy.
 
-## Main-thread boundary
+## Execution boundaries
 
 The main actor owns:
 
 - observable display and configuration state;
-- native AppKit window, overlay, and gamma lifecycle;
+- AppKit window, overlay, and gamma lifecycle;
 - persistence reads and writes;
-- generation checks and atomic backend-set installation;
-- presentation snapshots.
+- generation checks and atomic backend installation;
+- presentation snapshots;
+- callback and notification-observer ownership.
 
-The serialized DDC worker queue owns:
+The serialized `MyMonitor.globalDDC` worker queue owns:
 
 - IOAV service matching;
-- DDC luminance reads;
-- no-op write validation;
+- DDC luminance reads and no-op write validation;
 - range discovery;
-- debounced luminance writes;
-- DDC connection invalidation and rematching.
+- latest-value-coalesced writes;
+- stale-service rematching;
+- DDC connection invalidation.
 
-No DDC operation may synchronously block its caller.
+No DDC operation synchronously blocks its caller.
 
 ## Reconfiguration lifecycle
 
-1. Enumerate the current external display IDs.
-2. Preserve still-connected active backends and cached presentation rows.
-3. Remove disconnected backend resources immediately.
-4. Publish `detecting(cached:)` through the adapter.
-5. Batch-probe DDC candidates on `MyMonitor.globalDDC`.
-6. Return probe results to the main actor.
-7. Reject results whose reconfiguration generation is stale.
-8. Recheck the online display set before applying results.
-9. Resolve the latest requested method, range, and gamma or shade fallback on the main actor.
-10. Resolve installation brightness from live state, then persisted state, then probed hardware state.
+1. Enumerate current external display IDs.
+2. Preserve still-connected backends and cached presentation rows.
+3. Remove disconnected resources immediately.
+4. Publish `detecting(cached:)`.
+5. Batch-probe eligible DDC displays on the worker queue.
+6. Return opaque validated results to the main actor.
+7. Reject stale generations and results arriving after teardown.
+8. Recheck the online display set.
+9. Resolve the latest requested method, range, and fallback.
+10. Resolve brightness from live state, persisted state, probed hardware, then full brightness.
 11. Atomically install the final backend set and publish `ready`.
 
-A hot-plug or explicit retry that occurs during an older probe increments the generation. The older result is invalidated and cannot replace newer state.
+Hot-plug, display-mode, and mirror changes invalidate the active generation immediately. Disconnected rows, temporary mirror/Space holds, backends, and queued writes are released before the 600 ms capability-reprobe debounce.
 
-Add/remove callbacks do not wait for the 600 ms stabilization debounce. They immediately invalidate the active generation, terminate any mirror/Space transition holds, remove disconnected rows, tear down disconnected backends, and cancel queued DDC writes. Only the expensive reprobe is delayed so a burst of Core Graphics callbacks settles into one generation.
+Wake bypasses that debounce and starts a forced generation immediately, so pre-sleep IOAV results cannot install during a post-wake delay.
 
-Wake bypasses the debounce and starts a forced generation immediately. A probe that began before sleep therefore cannot install stale IOAV service state during a post-wake delay.
+Forget and Reset return the requested method to Automatic and force a new generation for connected displays. The UI therefore cannot report Automatic while retaining a previously forced Hardware, Software, or Shade backend.
 
-Brightness and range are deliberately not frozen into a probe input. At installation, the hardware-free `DisplayReconfigurationPolicy` chooses the current in-memory value first, then the latest persisted value, then the probed luminance, and finally full brightness. It clamps the result against the latest configured range. A cached slider drag therefore cannot be rolled back by a probe that started earlier.
+## Terminal lifetime ownership
 
-Forget and Reset change the requested control method back to Automatic. Connected displays are always re-probed immediately, even when the router was previously ready, so the UI cannot report Automatic while retaining a formerly forced Hardware, Software, or Shade backend.
+`AppDelegate` performs synchronous, idempotent teardown for both the explicit Quit action and `applicationWillTerminate`.
+
+`DisplayRouter.teardownAll()` is a terminal boundary. It:
+
+- unregisters the Core Graphics reconfiguration callback that holds an unretained router pointer;
+- removes block observers from both `NotificationCenter.default` and the workspace notification center;
+- cancels pending reprobe and overlay-transition work;
+- invalidates queued DDC work;
+- restores gamma/ColorSync state and closes Shade panels;
+- rejects any callback, timer, user action, or late probe that arrives afterward.
+
+Teardown is not scheduled from a termination notification because the process may exit before an asynchronously enqueued task executes.
 
 ## Mirroring
 
-The popover collapses rows only for a true full-mirror topology. A partially mirrored set plus an unrelated extended display remains fully represented.
+Rows collapse only for a true full-mirror topology. A partially mirrored set plus an unrelated extended display remains fully represented.
 
-Mirror detection requires both:
+A collapsed row is a control group, not merely a visual representative. Brightness changes fan out to every connected external member of the full mirror set. Each physical display still clamps against and persists its own configured range.
 
-- one effective `NSScreen` surface; and
-- at least one Core Graphics display in a mirror set.
+A global hotkey targeting a connected physical display that becomes hidden by full-mirror collapse is routed through the visible representative; the router then fans that value out to the complete set. Remembered disconnected targets remain inactive rather than being redirected unexpectedly.
 
-Temporary gamma stabilization is applied only to actual members of that mirror set. A topology change cancels the transition timer and releases the complete temporary hold set before backend reconciliation.
+Temporary gamma stabilization is applied only to actual members of the mirror set. Routing changes cancel the transition timer and release the complete temporary hold set before backend reconciliation.
 
 ## DDC writes and recovery
 
-Every DDC connection uses the same global serial queue because the adapted transport maintains shared IOAV service state.
-
 During slider drag:
 
-- frontend presentation updates immediately;
-- router state updates immediately;
-- DDC requests are latest-value coalesced for 90 ms;
-- obsolete write generations do not write;
-- final release persists immediately in app state while the hardware write remains asynchronous;
-- probe installation reads the live router value, so it cannot reinstall pre-drag brightness;
-- the installed connection receives the final value before the debounce expires, cancelling any stale scheduled write.
+- frontend and router state update immediately;
+- writes are coalesced for 90 ms;
+- obsolete write generations do not execute;
+- final release persists app state while hardware communication remains asynchronous;
+- probe installation reads current live state, so it cannot roll brightness backward.
 
-The probe result carries the already validated service and confirmed luminance range into the installed backend. A failed later write discards the cached service and range state; the next user request rematches the IOAV service and re-reads the range instead of pinning a stale post-wake or post-topology handle indefinitely. A range read failure blocks the write rather than assuming a monitor maximum.
+A probe result carries its validated service, confirmed maximum, and current luminance into the installed backend.
 
-The adapted IOKit matcher releases both skipped and returned iterator objects after extraction and deallocates its registry-path buffer. Repeated probes therefore do not leak one registry object or heap buffer per match attempt.
+If a service or range read fails after wake or a topology change, the same latest requested value receives one bounded recovery attempt:
 
-## Gamma replacement and ColorSync
+1. discard the stale service and range state;
+2. rematch the IOAV service;
+3. reread the range;
+4. retry the write once.
 
-Gamma backends retain an owner token per display. A stale backend teardown cannot release the curve installed by its replacement.
+There is no retry loop and no replay of an obsolete generation. An unreadable range blocks the write rather than assuming a monitor maximum.
 
-Backend construction no longer writes a temporary 100% curve before the desired brightness is known. This avoids a visible flash during Gamma-to-Gamma replacement.
+## Shade correctness
 
-`CGDisplayRestoreColorSyncSettings()` is process-global rather than display-scoped. Persistent gamma controls and temporary mirror/Space stabilization holds therefore share one `GammaHoldRegistry`. Hold removal follows one guarded operation:
+Shade opacity animations carry a monotonically increasing generation. An older completion cannot hide the panel after a newer dim command. Direct manipulation and teardown remove in-flight layer animations, and a torn-down backend cannot recreate or reorder its panel.
 
-1. remove the complete related hold set from the registry;
-2. restore the system ColorSync calibration once;
-3. immediately replay every persistent and temporary gamma hold that remains registered.
+## Gamma and ColorSync
 
-Writing an identity gamma curve is not treated as calibration restoration. This preserves the removed display's ColorSync calibration without brightening another gamma-controlled display or dropping an in-flight mirror/Space hold.
+Gamma backends retain an owner token per display. A stale backend cannot release a replacement curve.
 
-## Hardware-free policies
+Construction does not write a temporary 100% curve, avoiding replacement flashes.
 
-Mutable installation, topology, and replay rules live in the small `MyMonitorPolicies` SwiftPM target rather than in UI or hardware code:
+`CGDisplayRestoreColorSyncSettings()` is process-global. Persistent gamma controls and temporary mirror/Space holds therefore share one `GammaHoldRegistry`. Related holds are removed atomically, ColorSync is restored once, and every remaining hold is replayed immediately. Writing an identity gamma curve is not treated as calibration restoration.
 
-- `DisplayReconfigurationPolicy` defines live/persisted/probed brightness precedence, topology subtraction, and full-vs-partial mirror presentation;
-- `GammaHoldRegistry` owns independent normalized brightness values and atomic hold-set removal.
+## Settings and global shortcuts
 
-The app target compiles these policies as internal source, while SwiftPM exercises them without Core Graphics, IOAV, AppKit windows, or a connected monitor.
+Carbon replacement is destructive: current registrations must be removed before candidate shortcuts can be installed. If candidate registration fails, `KeyboardShortcutController` reinstalls the previous working registration set and leaves persisted configuration unchanged.
 
-## Automated gates
+Forgetting a display publishes its identity to dependent settings state. A matching hotkey target is normalized to Display under pointer, preventing an invisible forgotten ID from becoming a permanent no-op. Reset All applies the same rule to every removed identity.
 
-`DisplayReconfigurationPolicyTests` verify:
+## IORegistry and IOAV safety
 
-- live brightness outranks stale persisted and probed snapshots;
-- persisted brightness restores a remembered display;
-- probed brightness seeds first run;
-- missing values default safely;
-- the latest range clamps installation;
-- removed display IDs are derived from installed and online sets;
-- partial mirroring preserves unrelated displays;
-- full mirroring collapses to one stable representative.
+The adapted matcher:
 
-`GammaHoldRegistryTests` verify:
+- releases skipped and consumed iterator objects;
+- initializes, bounds-checks, deinitializes, and deallocates the registry path buffer;
+- ignores failed path extraction instead of reading uninitialized memory;
+- clears proxy-specific service state before lookup;
+- appends only validated external candidates;
+- preserves framebuffer identity across multiple proxies by creating an isolated candidate per proxy;
+- guards root and iterator ownership before release.
 
-- multiple displays retain independent brightness values;
-- replacing one hold does not alter another;
-- removing one hold preserves every other hold;
-- related transition holds can be removed atomically;
-- values remain normalized to `0...1`.
+## Hardware-free policies and tests
 
-`scripts/validate_backend_concurrency.sh` verifies:
+`MyMonitorPolicies` covers:
 
-- no synchronous dispatch in the DDC transport;
-- private DDC APIs remain outside `DisplayRouter`;
-- the serialized worker queue and latest-write generations remain present;
-- failed DDC services are discarded and unvalidated ranges block writes;
-- gamma construction cannot flash to full brightness;
-- global ColorSync restoration is paired with atomic hold removal and replay;
-- router reconfiguration generations remain present;
-- asynchronous detecting state remains exposed;
-- installation resolves brightness from live state instead of captured mutable snapshots;
-- full-vs-partial mirror policy remains wired into the router;
-- topology changes release transition holds and disconnected resources before reprobe scheduling;
-- wake invalidates the active generation immediately;
-- Forget and Reset force reconciliation for connected displays;
-- IOKit iterator objects and allocated path buffers remain balanced.
+- live/persisted/probed brightness precedence;
+- latest-range clamping;
+- disconnected-ID calculation;
+- full-vs-partial mirror presentation;
+- full-mirror control fan-out;
+- independent gamma holds and atomic hold-set removal.
 
-CI additionally enforces:
+Presentation tests additionally cover destructive hotkey-registration rollback, forgotten-display target reconciliation, and cached-state behavior during asynchronous detection.
+
+## Executable gates
+
+Exact-head CI requires:
 
 - SwiftPM tests with warnings as errors;
-- the frontend contract;
+- frontend contract validation;
+- backend concurrency, lifecycle, recovery, and resource validation;
 - deterministic Xcode project regeneration with zero committed-project drift;
 - Xcode 26.3 arm64 Debug and Release builds with Swift warnings as errors;
-- whitespace validity.
+- whitespace validation.
 
-The committed `MyMonitor.xcodeproj` is therefore the exact output of `scripts/generate_xcodeproj.sh`; opening the repository locally and building in CI use the same source graph.
+Checkout credentials are not persisted into the workspace while PR-controlled scripts execute.
 
 ## Required hardware validation
 
-### Launch and first detection
+### Launch and continuous adjustment
 
-- Launch with one DDC monitor and confirm the menu-bar app remains responsive during probing.
-- Open the popover immediately after launch and confirm the detecting state appears rather than a frozen click.
-- Confirm first launch reads current hardware luminance and does not visibly change it.
+- first launch reads current DDC luminance without a visible jump;
+- the popover opens immediately during probing;
+- rapid drag remains responsive and never reverses through stale writes;
+- final brightness persists after relaunch;
+- a cached drag during Retry is not rolled back.
 
-### Continuous adjustment and recovery
+### Recovery and lifecycle
 
-- Drag rapidly from low to high brightness and back.
-- Confirm the thumb and percentage remain frame-responsive.
-- Confirm hardware follows without reversing or replaying stale intermediate values.
-- Release at a final value and confirm persistence after relaunch.
-- Adjust through a cached row during Retry and confirm probe completion does not roll the display back.
-- Sleep and wake, then confirm a stale IOAV handle rematches after the next request.
+- the first command after wake succeeds through bounded service rematching;
+- hot-plug/unplug during probing does not resurrect rows or writes;
+- repeated Retry, method changes, range changes, Forget, and Reset reject stale generations;
+- ordinary Quit and system termination restore gamma state and close Shade panels;
+- no callback restarts routing after teardown.
 
-### Reconfiguration races
+### Mixed backends and topology
 
-- Connect and disconnect a monitor while another monitor is being probed.
-- Confirm a removed row disappears immediately, before reprobe completion.
-- Confirm no queued write reaches a monitor after its backend is torn down.
-- Trigger Retry twice rapidly.
-- Change the requested control method during a retry.
-- Change minimum or maximum range during a retry.
-- Forget one connected display and Reset All while ready; confirm the active method is reselected immediately.
-- Sleep and wake during detection.
-- Confirm stale rows, brightness, bounds, preferences, or backends do not reappear.
-
-### Mixed backends
-
-- One DDC display plus one gamma display.
-- One DDC display plus one shade display.
-- Two simultaneous gamma displays at different brightness levels.
-- Probe or remove one gamma display and confirm the other curve is immediately preserved.
-- Confirm Gamma-to-Gamma replacement does not flash to 100% brightness.
-- Trigger a mirror/Space hold while restoring ColorSync and confirm the temporary hold is replayed.
-- Forced Hardware when DDC is unavailable.
-- Forced Software when gamma is unavailable.
-- Switch Gamma → Gamma, Gamma → DDC, and Gamma → Shade and confirm ColorSync calibration and remaining active curves stay correct.
-
-### Spaces and mirroring
-
-- Extended desktop across Spaces.
-- Fullscreen Space.
-- Fully mirrored external display.
-- A mirrored pair plus a second extended display; confirm the second display remains visible in the popover.
-- Unplug during a mirror/Space transition; confirm no built-in or peer gamma hold remains after topology reconciliation.
+- DDC + Gamma, DDC + Shade, and two simultaneous Gamma displays;
+- Gamma-to-Gamma replacement without a 100% flash;
+- Hardware/Software/Shade fallback transitions;
+- extended desktop and fullscreen Spaces;
+- a full mirror with multiple external displays adjusts every physical member from one row;
+- a mirrored pair plus an extended display keeps the unrelated display visible;
+- unplug during mirror/Space stabilization leaves no built-in or peer gamma hold.
 
 ## Known boundary
 
-The persisted identity still derives from `CGDirectDisplayID`. Durable EDID-based identity across topology changes is a separate migration because it affects existing preference keys, mirrored-set identity, DDC service matching, and user data. F15 does not disguise that limitation as solved.
+Persistence still derives from `CGDirectDisplayID`. Durable EDID-based identity requires a separate migration because it affects preference keys, mirror-set identity, DDC matching, and existing user data. F15 does not disguise that limitation as solved.
