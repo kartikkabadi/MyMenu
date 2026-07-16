@@ -167,7 +167,7 @@ final class KeyboardShortcutController {
       return
     }
 
-    guard register(candidate) else { return }
+    guard register(candidate, restoring: configuration) else { return }
     configuration = candidate
     persistence.saveConfiguration(candidate)
   }
@@ -187,22 +187,38 @@ final class KeyboardShortcutController {
   }
 
   private func install(_ configuration: KeyboardShortcutConfiguration) {
-    if !register(configuration) {
+    if !register(configuration, restoring: nil) {
       service.unregisterAll()
     }
   }
 
-  private func register(_ candidate: KeyboardShortcutConfiguration) -> Bool {
+  /// Some platform services must unregister the current shortcuts before trying replacements.
+  /// Restore the last working set when the candidate is unavailable so a failed edit cannot silently
+  /// disable shortcuts that were already active.
+  private func register(
+    _ candidate: KeyboardShortcutConfiguration,
+    restoring previous: KeyboardShortcutConfiguration?
+  ) -> Bool {
     do {
-      try service.replaceRegistrations(candidate.registrations) { [weak self] action in
-        guard let self else { return }
-        self.actionHandler?(action, self.configuration.target)
-      }
+      try replaceRegistrations(with: candidate)
       errorMessage = nil
       return true
     } catch {
-      errorMessage = error.localizedDescription
+      let replacementError = error.localizedDescription
+      if let previous {
+        try? replaceRegistrations(with: previous)
+      }
+      errorMessage = replacementError
       return false
+    }
+  }
+
+  private func replaceRegistrations(
+    with configuration: KeyboardShortcutConfiguration
+  ) throws {
+    try service.replaceRegistrations(configuration.registrations) { [weak self] action in
+      guard let self else { return }
+      self.actionHandler?(action, self.configuration.target)
     }
   }
 }
