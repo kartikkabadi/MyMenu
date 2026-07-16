@@ -4,12 +4,12 @@ enum BrightnessDesign {
   /// Narrow enough to read as a system control while preserving native slider precision.
   static let popoverWidth: CGFloat = 312
 
-  /// Keeps unusually large display sets inside a compact menu-bar surface.
-  static let maximumMonitorListHeight: CGFloat = 360
+  /// Keeps the display heading and footer stationary for larger monitor sets.
+  static let maximumMonitorListHeight: CGFloat = 340
 
   /// Hard safety bound for the AppKit host; normal content should size below this naturally.
   static let maximumPopoverHeight: CGFloat = 440
 
-  /// Temporary shell rule until F6 replaces count-based overflow with the final layout.
-  static let maximumUnscrolledMonitorCount = 4
+  /// Four or more displays use a native scrolling list.
+  static let scrollingMonitorThreshold = 4
 }
