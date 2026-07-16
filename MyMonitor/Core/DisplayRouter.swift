@@ -184,6 +184,9 @@ final class DisplayRouter {
   /// changes the preferred control method. Existing controls remain alive while slow DDC work
   /// completes, and the final backend set is swapped atomically on the main actor.
   func reconfigure(force: Bool = false) {
+    reconfigureWorkItem?.cancel()
+    reconfigureWorkItem = nil
+
     let externalIDs = Set(Self.onlineExternalDisplayIDs())
 
     guard !externalIDs.isEmpty else {
@@ -208,11 +211,7 @@ final class DisplayRouter {
     let inputs = externalIDs.sorted().map { displayID in
       ReconfigurationInput(
         displayID: displayID,
-        name: Self.displayName(displayID),
         preference: loadControlPreference(displayID: displayID),
-        allowedRange: loadBrightnessRange(displayID: displayID),
-        savedBrightness: loadBrightness(displayID: displayID),
-        currentBrightness: displays.first(where: { $0.id == displayID })?.brightness,
         forceOverlay: Self.shouldUseOverlayForMirror(displayID: displayID)
       )
     }
@@ -244,11 +243,7 @@ final class DisplayRouter {
 
   private struct ReconfigurationInput {
     let displayID: CGDirectDisplayID
-    let name: String
     let preference: BrightnessControlPreference
-    let allowedRange: ClosedRange<Double>
-    let savedBrightness: Double?
-    let currentBrightness: Double?
     let forceOverlay: Bool
   }
 
@@ -265,7 +260,7 @@ final class DisplayRouter {
     let expectedIDs = Set(inputs.map(\.displayID))
     guard expectedIDs == Set(Self.onlineExternalDisplayIDs()) else {
       Self.invalidate(ddcResults)
-      reconfigure(force: true)
+      handleDisplayTopologyChange()
       return
     }
 
@@ -275,16 +270,21 @@ final class DisplayRouter {
     nextDisplays.reserveCapacity(inputs.count)
 
     for input in inputs {
-      let ddcResult = ddcResults[input.displayID]
+      let displayID = input.displayID
+      let name = Self.displayName(displayID)
+      let preference = loadControlPreference(displayID: displayID)
+      let allowedRange = loadBrightnessRange(displayID: displayID)
+      let forceOverlay = Self.shouldUseOverlayForMirror(displayID: displayID)
+      let ddcResult = ddcResults[displayID]
       let gammaAvailable = gammaCapability(
-        for: input.displayID,
-        preference: input.preference,
+        for: displayID,
+        preference: preference,
         hasDDC: ddcResult != nil,
-        forceOverlay: input.forceOverlay
+        forceOverlay: forceOverlay
       )
       let tier = Self.resolveTier(
-        preference: input.preference,
-        forceOverlay: input.forceOverlay,
+        preference: preference,
+        forceOverlay: forceOverlay,
         hasDDC: ddcResult != nil,
         hasGamma: gammaAvailable
       )
@@ -293,36 +293,32 @@ final class DisplayRouter {
         ddcResult?.invalidate()
       }
 
-      let brightness = min(
-        max(
-          input.savedBrightness
-            ?? input.currentBrightness
-            ?? (tier == .ddc ? ddcResult?.currentBrightness : nil)
-            ?? 1,
-          input.allowedRange.lowerBound
-        ),
-        input.allowedRange.upperBound
+      let brightness = DisplayReconfigurationPolicy.resolvedBrightness(
+        live: displays.first(where: { $0.id == displayID })?.brightness,
+        persisted: loadBrightness(displayID: displayID),
+        probed: tier == .ddc ? ddcResult?.currentBrightness : nil,
+        allowedRange: allowedRange
       )
 
       let backend = Self.makeBackend(
-        displayID: input.displayID,
+        displayID: displayID,
         tier: tier,
         brightness: brightness,
         ddcResult: ddcResult
       )
-      nextBackends[input.displayID] = backend
+      nextBackends[displayID] = backend
       nextDisplays.append(
         ExternalDisplayItem(
-          id: input.displayID,
-          name: input.name,
+          id: displayID,
+          name: name,
           brightness: brightness,
           tier: tier,
-          allowedRange: input.allowedRange,
-          controlPreference: input.preference
+          allowedRange: allowedRange,
+          controlPreference: preference
         )
       )
-      rememberDisplay(input.displayID, name: input.name)
-      persistTier(tier, displayID: input.displayID)
+      rememberDisplay(displayID, name: name)
+      persistTier(tier, displayID: displayID)
     }
 
     teardownInstalledBackends()
@@ -406,14 +402,23 @@ final class DisplayRouter {
   private func removeDisconnectedBackends(
     keeping externalIDs: Set<CGDirectDisplayID>
   ) {
-    let removedIDs = Set(backends.keys).subtracting(externalIDs)
+    let removedIDs = DisplayReconfigurationPolicy.removedIDs(
+      installed: Set(backends.keys),
+      online: externalIDs
+    )
+
     for displayID in removedIDs {
+      if gammaHoldDisplayIDs.remove(displayID) != nil {
+        DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
+      }
       backends.removeValue(forKey: displayID)?.teardown()
     }
     displays.removeAll { !externalIDs.contains($0.id) }
   }
 
   private func invalidatePendingReconfiguration() {
+    reconfigureWorkItem?.cancel()
+    reconfigureWorkItem = nil
     reconfigurationGeneration &+= 1
     isReconfiguring = false
   }
@@ -680,7 +685,7 @@ final class DisplayRouter {
       }
 
       guard flags.contains(.addFlag) || flags.contains(.removeFlag) else { return }
-      Task { @MainActor in router.scheduleReconfigure() }
+      Task { @MainActor in router.handleDisplayTopologyChange() }
     }
 
     let unmanaged = Unmanaged.passUnretained(self)
@@ -723,6 +728,27 @@ final class DisplayRouter {
     ) { [weak self] _ in
       Task { @MainActor in self?.teardownAll() }
     }
+  }
+
+  /// Remove stale rows and resources immediately, then debounce only the expensive reprobe so a
+  /// burst of Core Graphics callbacks settles into one generation.
+  private func handleDisplayTopologyChange() {
+    reconfigureWorkItem?.cancel()
+    reconfigureWorkItem = nil
+    reconfigurationGeneration &+= 1
+
+    let externalIDs = Set(Self.onlineExternalDisplayIDs())
+    removeDisconnectedBackends(keeping: externalIDs)
+
+    guard !externalIDs.isEmpty else {
+      isReconfiguring = false
+      teardownInstalledBackends()
+      displays = []
+      return
+    }
+
+    isReconfiguring = true
+    scheduleReconfigure(force: true)
   }
 
   private func scheduleReconfigure(force: Bool = false) {
