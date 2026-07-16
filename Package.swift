@@ -15,6 +15,10 @@ let package = Package(
   ],
   targets: [
     .target(
+      name: "MyMonitorPolicies",
+      path: "MyMonitor/Policies"
+    ),
+    .target(
       name: "MyMonitorPresentation",
       path: "MyMonitor/Presentation",
       exclude: [
@@ -32,13 +36,14 @@ let package = Package(
         "DisplayConfigurationStore.swift",
         "KeyboardShortcutController.swift",
         "DiagnosticReport.swift",
-        "DisplayReconfigurationPolicy.swift",
-        "GammaHoldRegistry.swift",
       ]
     ),
     .testTarget(
       name: "MyMonitorPresentationTests",
-      dependencies: ["MyMonitorPresentation"],
+      dependencies: [
+        "MyMonitorPolicies",
+        "MyMonitorPresentation",
+      ],
       path: "MyMonitorTests/Presentation"
     ),
   ],
