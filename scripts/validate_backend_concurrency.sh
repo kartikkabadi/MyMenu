@@ -3,7 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DDC="$ROOT/MyMonitor/Core/DDCBrightnessBackend.swift"
-GAMMA="$ROOT/MyMonitor/Core/GammaBrightnessBackend.swift"
+GAMMA_BACKEND="$ROOT/MyMonitor/Core/GammaBrightnessBackend.swift"
+GAMMA_HOLDS="$ROOT/MyMonitor/Core/DisplayGamma.swift"
 ROUTER="$ROOT/MyMonitor/Core/DisplayRouter.swift"
 ADAPTER="$ROOT/MyMonitor/Presentation/DisplayRouterAdapter.swift"
 POLICY="$ROOT/MyMonitor/Presentation/DisplayReconfigurationPolicy.swift"
@@ -28,14 +29,18 @@ grep -q 'MyMonitor.globalDDC' "$DDC" \
   || fail "DDC operations must stay on the single serialized worker queue."
 grep -q 'writeGeneration' "$DDC" \
   || fail "DDC writes must retain latest-value coalescing."
-grep -q 'activeStateByDisplay' "$GAMMA" \
-  || fail "Gamma replacement must retain per-display owner and brightness state."
-grep -q 'restoreColorSyncAndReapplyActiveGamma' "$GAMMA" \
-  || fail "Global ColorSync restoration must reapply every active gamma display."
-grep -q 'CGDisplayRestoreColorSyncSettings' "$GAMMA" \
+grep -q 'activeOwnerByDisplay' "$GAMMA_BACKEND" \
+  || fail "Gamma replacement must retain per-display ownership."
+grep -q 'heldBrightness' "$GAMMA_HOLDS" \
+  || fail "Persistent and temporary gamma holds must share one replay registry."
+grep -q 'restoreColorSyncAndReapplyHolds' "$GAMMA_HOLDS" \
+  || fail "Global ColorSync restoration must replay every active gamma hold."
+grep -q 'CGDisplayRestoreColorSyncSettings' "$GAMMA_HOLDS" \
   || fail "Gamma removal must restore the original ColorSync calibration."
-grep -q 'for (displayID, state) in activeStateByDisplay' "$GAMMA" \
-  || fail "ColorSync restoration must preserve unrelated active gamma curves."
+grep -q 'for (displayID, brightness) in heldBrightness' "$GAMMA_HOLDS" \
+  || fail "ColorSync restoration must preserve unrelated gamma and mirror holds."
+grep -q 'DisplayGamma.restoreColorSyncAndReapplyHolds()' "$GAMMA_BACKEND" \
+  || fail "Gamma probe and teardown must use the shared hold replay path."
 grep -q 'reconfigurationGeneration' "$ROUTER" \
   || fail "Display reconfiguration must reject stale asynchronous probe results."
 grep -q 'isReconfiguring' "$ROUTER" \
