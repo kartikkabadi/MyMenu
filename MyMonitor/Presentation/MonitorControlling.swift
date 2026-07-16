@@ -22,5 +22,6 @@ protocol MonitorControlling: AnyObject {
   )
 
   func retryControl(for monitorID: MonitorID)
+  func retryAllControls()
   func teardown()
 }
