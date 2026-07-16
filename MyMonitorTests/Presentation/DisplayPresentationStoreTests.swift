@@ -117,6 +117,41 @@ final class DisplayPresentationStoreTests: XCTestCase {
     XCTAssertEqual(controller.refreshCount, 1)
   }
 
+  func testRetryImmediatelyPublishesCheckingStateAndTargetsOneMonitor() {
+    let monitorID = MonitorPresentationFixtures.unavailableDisplayID
+    let controller = FakeMonitorController(
+      snapshot: MonitorPresentationFixtures.unavailableControl
+    )
+    let store = DisplayPresentationStore(controller: controller)
+
+    store.retryControl(for: monitorID)
+
+    XCTAssertEqual(store.monitor(withID: monitorID)?.control, .checking)
+    XCTAssertEqual(controller.retriedMonitorIDs, [monitorID])
+  }
+
+  func testFailedSnapshotMapsToRecoverableFailureAndRefreshStartsDetection() {
+    let controller = FakeMonitorController(
+      snapshot: MonitorPresentationFixtures.failed
+    )
+    let store = DisplayPresentationStore(controller: controller)
+
+    XCTAssertEqual(
+      store.state,
+      .failed(
+        DisplayPresentationFailure(
+          message: "MyMonitor could not detect external displays.",
+          canRetry: true
+        )
+      )
+    )
+
+    store.refresh()
+
+    XCTAssertEqual(store.state, .detecting(cached: []))
+    XCTAssertEqual(controller.refreshCount, 1)
+  }
+
   func testRemovingMonitorClearsItsOptimisticValue() {
     let monitorID = MonitorPresentationFixtures.studioDisplayID
     let controller = FakeMonitorController(
