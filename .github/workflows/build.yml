@@ -24,6 +24,30 @@ jobs:
       - name: Select Xcode 26.3
         run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
+      - name: Narrow the guarded observer anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/apply_router_lifetime_fix.py")
+          text = path.read_text()
+          old = '''    """    NotificationCenter.default.addObserver(
+          """,
+              """    defaultNotificationObservers.append(NotificationCenter.default.addObserver(
+          """,
+          '''
+          new = '''    """    NotificationCenter.default.addObserver(
+              forName: NSApplication.didChangeScreenParametersNotification,
+          """,
+              """    defaultNotificationObservers.append(NotificationCenter.default.addObserver(
+              forName: NSApplication.didChangeScreenParametersNotification,
+          """,
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError(f"observer script anchor: expected one match, found {text.count(old)}")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
       - name: Apply guarded router lifetime patch
         run: |
           python3 scripts/apply_router_lifetime_fix.py
