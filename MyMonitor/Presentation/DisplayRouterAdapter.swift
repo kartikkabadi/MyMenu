@@ -4,11 +4,13 @@ import Observation
 
 /// The only frontend-facing adapter for the existing display router.
 ///
-/// Core Graphics identities, backend tiers, discovery, writes, and persistence stop here.
+/// Core Graphics identities, backend tiers, discovery, writes, persistence, and configuration
+/// stop here.
 @MainActor
-final class DisplayRouterAdapter: MonitorControlling {
+final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationControlling {
   private let router: DisplayRouter
   private var snapshotHandler: (@MainActor (DisplayControllerSnapshot) -> Void)?
+  private var configurationHandler: (@MainActor ([MonitorConfigurationSnapshot]) -> Void)?
 
   init(router: DisplayRouter) {
     self.router = router
@@ -19,15 +21,25 @@ final class DisplayRouterAdapter: MonitorControlling {
     .ready(router.presentationDisplays.map(Self.makeSnapshot))
   }
 
+  var currentConfigurations: [MonitorConfigurationSnapshot] {
+    router.configurationDisplays.map(Self.makeConfigurationSnapshot)
+  }
+
   func setSnapshotHandler(
     _ handler: @escaping @MainActor (DisplayControllerSnapshot) -> Void
   ) {
     snapshotHandler = handler
   }
 
+  func setConfigurationHandler(
+    _ handler: @escaping @MainActor ([MonitorConfigurationSnapshot]) -> Void
+  ) {
+    configurationHandler = handler
+  }
+
   func refresh() {
     router.reconfigure()
-    publishSnapshot()
+    publishAll()
   }
 
   func setBrightness(
@@ -42,13 +54,42 @@ final class DisplayRouterAdapter: MonitorControlling {
       animated: animated,
       persist: persist
     )
-    publishSnapshot()
+    publishAll()
   }
 
   func retryControl(for monitorID: MonitorID) {
     _ = monitorID
-    router.reconfigure()
-    publishSnapshot()
+    router.reconfigure(force: true)
+    publishAll()
+  }
+
+  func setBrightnessRange(
+    _ range: ClosedRange<Double>,
+    for monitorID: MonitorID
+  ) {
+    router.setBrightnessRange(
+      range,
+      for: CGDirectDisplayID(monitorID.rawValue)
+    )
+    publishAll()
+  }
+
+  func setControlPreference(
+    _ preference: MonitorControlPreference,
+    for monitorID: MonitorID
+  ) {
+    router.setControlPreference(
+      preference.backendPreference,
+      for: CGDirectDisplayID(monitorID.rawValue)
+    )
+    publishAll()
+  }
+
+  func forgetConfiguration(for monitorID: MonitorID) {
+    router.forgetDisplayConfiguration(
+      for: CGDirectDisplayID(monitorID.rawValue)
+    )
+    publishAll()
   }
 
   func teardown() {
@@ -58,19 +99,40 @@ final class DisplayRouterAdapter: MonitorControlling {
   private func observeRouter() {
     withObservationTracking {
       _ = router.presentationDisplays.map {
-        ($0.id, $0.name, $0.brightness, $0.tier)
+        (
+          $0.id,
+          $0.name,
+          $0.brightness,
+          $0.tier,
+          $0.allowedRange.lowerBound,
+          $0.allowedRange.upperBound,
+          $0.controlPreference
+        )
+      }
+      _ = router.configurationDisplays.map {
+        (
+          $0.id,
+          $0.name,
+          $0.isConnected,
+          $0.brightness,
+          $0.allowedRange.lowerBound,
+          $0.allowedRange.upperBound,
+          $0.preference,
+          $0.activeTier
+        )
       }
     } onChange: { [weak self] in
       Task { @MainActor in
         guard let self else { return }
-        self.publishSnapshot()
+        self.publishAll()
         self.observeRouter()
       }
     }
   }
 
-  private func publishSnapshot() {
+  private func publishAll() {
     snapshotHandler?(currentSnapshot)
+    configurationHandler?(currentConfigurations)
   }
 
   private static func makeSnapshot(_ item: ExternalDisplayItem) -> MonitorSnapshot {
@@ -78,7 +140,22 @@ final class DisplayRouterAdapter: MonitorControlling {
       id: MonitorID(rawValue: item.id),
       name: item.name,
       brightness: item.brightness,
+      allowedRange: item.allowedRange,
       control: .available(item.tier.presentationMethod)
+    )
+  }
+
+  private static func makeConfigurationSnapshot(
+    _ item: DisplayConfigurationItem
+  ) -> MonitorConfigurationSnapshot {
+    MonitorConfigurationSnapshot(
+      id: MonitorID(rawValue: item.id),
+      name: item.name,
+      isConnected: item.isConnected,
+      brightness: item.brightness,
+      allowedRange: item.allowedRange,
+      preference: item.preference.presentationPreference,
+      activeMethod: item.activeTier?.presentationMethod
     )
   }
 }
@@ -89,6 +166,28 @@ private extension BrightnessTier {
     case .ddc: .hardware
     case .gamma: .software
     case .overlay: .shade
+    }
+  }
+}
+
+private extension BrightnessControlPreference {
+  var presentationPreference: MonitorControlPreference {
+    switch self {
+    case .automatic: .automatic
+    case .hardware: .hardware
+    case .software: .software
+    case .shade: .shade
+    }
+  }
+}
+
+private extension MonitorControlPreference {
+  var backendPreference: BrightnessControlPreference {
+    switch self {
+    case .automatic: .automatic
+    case .hardware: .hardware
+    case .software: .software
+    case .shade: .shade
     }
   }
 }
