@@ -8,6 +8,9 @@ final class DisplayConfigurationStore {
   private(set) var configurations: [MonitorConfiguration]
 
   @ObservationIgnored
+  var onConfigurationForgotten: (@MainActor (MonitorID) -> Void)?
+
+  @ObservationIgnored
   private let controller: any DisplayConfigurationControlling
 
   init(controller: any DisplayConfigurationControlling) {
@@ -47,10 +50,15 @@ final class DisplayConfigurationStore {
 
   func forgetConfiguration(for monitorID: MonitorID) {
     controller.forgetConfiguration(for: monitorID)
+    onConfigurationForgotten?(monitorID)
   }
 
   func resetAllConfigurations() {
+    let monitorIDs = configurations.map(\.id)
     controller.resetAllConfigurations()
+    for monitorID in monitorIDs {
+      onConfigurationForgotten?(monitorID)
+    }
   }
 
   private func setRange(
