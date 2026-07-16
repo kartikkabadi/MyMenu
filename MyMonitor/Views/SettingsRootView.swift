@@ -40,6 +40,7 @@ struct SettingsRootView: View {
       )
     case .keyboard:
       KeyboardSettingsView(
+        store: store,
         configurationStore: configurationStore,
         keyboardShortcutController: keyboardShortcutController
       )
