@@ -19,9 +19,9 @@ enum MonitorControlMethod: String, Equatable, Sendable {
 
   var label: String {
     switch self {
-    case .hardware: "Hardware control"
-    case .software: "Software control"
-    case .shade: "Display shade"
+    case .hardware: String(localized: "Hardware control")
+    case .software: String(localized: "Software control")
+    case .shade: String(localized: "Display shade")
     }
   }
 }
@@ -35,11 +35,11 @@ enum MonitorControlState: Equatable, Sendable {
   var label: String {
     switch self {
     case .checking:
-      "Checking hardware control…"
+      String(localized: "Checking hardware control…")
     case .available(let method):
       method.label
     case .unavailable:
-      "Brightness unavailable"
+      String(localized: "Brightness unavailable")
     }
   }
 }
