@@ -11,4 +11,10 @@ struct GammaHoldRegistry<ID: Hashable> {
   mutating func removeBrightness(for id: ID) {
     brightnessByID.removeValue(forKey: id)
   }
+
+  mutating func removeBrightness<S: Sequence>(for ids: S) where S.Element == ID {
+    for id in ids {
+      brightnessByID.removeValue(forKey: id)
+    }
+  }
 }
