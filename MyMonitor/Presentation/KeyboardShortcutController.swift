@@ -178,6 +178,13 @@ final class KeyboardShortcutController {
     errorMessage = nil
   }
 
+  /// A forgotten display must not remain as an invisible hotkey target. Preserve every other target,
+  /// including connected or deliberately remembered displays.
+  func forgetDisplayTarget(_ monitorID: MonitorID) {
+    guard configuration.target == .display(monitorID) else { return }
+    setTarget(.displayUnderPointer)
+  }
+
   func clearError() {
     errorMessage = nil
   }
