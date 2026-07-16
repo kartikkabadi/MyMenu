@@ -1,46 +1,80 @@
-import Foundation
+public struct ConnectionEvidence: Equatable, Codable, Sendable {
+  public let transport: String?
+  public let supportID: String?
+  public let portHint: String?
 
-struct ConnectionEvidence: Equatable, Codable, Sendable {
-  let transport: String?
-  let pathHash: String?
-  let portHint: String?
-
-  init(transport: String? = nil, pathHash: String? = nil, portHint: String? = nil) {
+  public init(
+    transport: String? = nil,
+    supportID: String? = nil,
+    portHint: String? = nil
+  ) {
     self.transport = transport
-    self.pathHash = pathHash
+    self.supportID = supportID
     self.portHint = portHint
   }
 }
 
-struct RuntimeDisplayDescriptor: Equatable, Codable, Sendable {
-  let runtimeID: RuntimeDisplayID
-  let name: String
-  let isBuiltIn: Bool
-  let isOnline: Bool
-  let vendorID: UInt32?
-  let productID: UInt32?
-  let serialNumber: UInt32?
-  let edidDigest: String?
-  let connection: ConnectionEvidence
+public struct RuntimeDisplayDescriptor: Equatable, Codable, Sendable {
+  public let runtimeID: RuntimeDisplayID
+  public let name: String
+  public let isBuiltIn: Bool
+  public let isOnline: Bool
+  public let connection: ConnectionEvidence
+
+  public init(
+    runtimeID: RuntimeDisplayID,
+    name: String,
+    isBuiltIn: Bool,
+    isOnline: Bool,
+    connection: ConnectionEvidence = ConnectionEvidence()
+  ) {
+    self.runtimeID = runtimeID
+    self.name = name
+    self.isBuiltIn = isBuiltIn
+    self.isOnline = isOnline
+    self.connection = connection
+  }
 }
 
-struct DisplayMirrorGroup: Equatable, Codable, Sendable {
-  let id: DisplayGroupID
-  let members: [RuntimeDisplayID]
-  let isFullMirror: Bool
+public struct DisplayMirrorGroup: Equatable, Codable, Sendable {
+  public let id: DisplayGroupID
+  public let members: [RuntimeDisplayID]
+  public let isFullMirror: Bool
+
+  public init(
+    id: DisplayGroupID,
+    members: [RuntimeDisplayID],
+    isFullMirror: Bool
+  ) {
+    self.id = id
+    self.members = members
+    self.isFullMirror = isFullMirror
+  }
 }
 
-struct DisplayTopologySnapshot: Equatable, Codable, Sendable {
-  let capturedAt: EngineInstant
-  let signature: TopologySignature
-  let displays: [RuntimeDisplayDescriptor]
-  let mirrorGroups: [DisplayMirrorGroup]
+public struct DisplayTopologySnapshot: Equatable, Codable, Sendable {
+  public let capturedAt: EngineInstant
+  public let signature: TopologySignature
+  public let displays: [RuntimeDisplayDescriptor]
+  public let mirrorGroups: [DisplayMirrorGroup]
 
-  var onlineDisplayIDs: Set<RuntimeDisplayID> {
+  public init(
+    capturedAt: EngineInstant,
+    signature: TopologySignature,
+    displays: [RuntimeDisplayDescriptor],
+    mirrorGroups: [DisplayMirrorGroup]
+  ) {
+    self.capturedAt = capturedAt
+    self.signature = signature
+    self.displays = displays
+    self.mirrorGroups = mirrorGroups
+  }
+
+  public var onlineDisplayIDs: Set<RuntimeDisplayID> {
     Set(displays.lazy.filter(\.isOnline).map(\.runtimeID))
   }
 
-  func descriptor(for runtimeID: RuntimeDisplayID) -> RuntimeDisplayDescriptor? {
+  public func descriptor(for runtimeID: RuntimeDisplayID) -> RuntimeDisplayDescriptor? {
     displays.first { $0.runtimeID == runtimeID }
   }
 }
