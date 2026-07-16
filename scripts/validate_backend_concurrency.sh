@@ -5,10 +5,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DDC="$ROOT/MyMonitor/Core/DDCBrightnessBackend.swift"
 GAMMA_BACKEND="$ROOT/MyMonitor/Core/GammaBrightnessBackend.swift"
 GAMMA_HOLDS="$ROOT/MyMonitor/Core/DisplayGamma.swift"
-GAMMA_REGISTRY="$ROOT/MyMonitor/Presentation/GammaHoldRegistry.swift"
+GAMMA_REGISTRY="$ROOT/MyMonitor/Policies/GammaHoldRegistry.swift"
 ROUTER="$ROOT/MyMonitor/Core/DisplayRouter.swift"
 ADAPTER="$ROOT/MyMonitor/Presentation/DisplayRouterAdapter.swift"
-POLICY="$ROOT/MyMonitor/Presentation/DisplayReconfigurationPolicy.swift"
+POLICY="$ROOT/MyMonitor/Policies/DisplayReconfigurationPolicy.swift"
 
 fail() {
   printf 'Backend concurrency violation: %s\n' "$1" >&2
