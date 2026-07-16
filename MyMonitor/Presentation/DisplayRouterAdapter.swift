@@ -18,7 +18,11 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
   }
 
   var currentSnapshot: DisplayControllerSnapshot {
-    .ready(router.presentationDisplays.map(Self.makeSnapshot))
+    let snapshots = router.presentationDisplays.map(Self.makeSnapshot)
+    if router.isReconfiguring {
+      return .detecting(cached: snapshots)
+    }
+    return .ready(snapshots)
   }
 
   var currentConfigurations: [MonitorConfigurationSnapshot] {
@@ -38,7 +42,7 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
   }
 
   func refresh() {
-    router.reconfigure()
+    router.reconfigure(force: true)
     publishAll()
   }
 
@@ -113,6 +117,7 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
 
   private func observeRouter() {
     withObservationTracking {
+      _ = router.isReconfiguring
       _ = router.presentationDisplays.map {
         (
           $0.id,
