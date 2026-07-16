@@ -171,13 +171,20 @@ struct BrightnessPopoverView: View {
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
 
-      if failure.canRetry {
-        Button("Retry") {
-          store.refresh()
+      HStack(spacing: 8) {
+        if failure.canRetry {
+          Button("Retry") {
+            store.refresh()
+          }
+          .controlSize(.small)
+        }
+
+        Button("Open Diagnostics") {
+          AppDelegate.shared?.showDiagnostics()
         }
         .controlSize(.small)
-        .padding(.top, 2)
       }
+      .padding(.top, 2)
     }
     .frame(maxWidth: .infinity)
     .padding(.horizontal, 24)
@@ -277,9 +284,16 @@ private struct MonitorBrightnessRow: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
 
-        if canRetry {
-          Button("Retry") {
-            store.retryControl(for: monitor.id)
+        HStack(spacing: 8) {
+          if canRetry {
+            Button("Retry") {
+              store.retryControl(for: monitor.id)
+            }
+            .controlSize(.small)
+          }
+
+          Button("Open Diagnostics") {
+            AppDelegate.shared?.showDiagnostics(for: monitor.id)
           }
           .controlSize(.small)
         }
