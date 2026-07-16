@@ -6,11 +6,12 @@ struct SettingsRootView: View {
   @Bindable var configurationStore: DisplayConfigurationStore
   @Bindable var launchAtLoginController: LaunchAtLoginController
   @Bindable var keyboardShortcutController: KeyboardShortcutController
-  @State private var selection: SettingsDestination = .general
+  @Bindable var navigationModel: SettingsNavigationModel
+  @Bindable var diagnosticsController: DiagnosticsController
 
   var body: some View {
     NavigationSplitView {
-      List(SettingsDestination.allCases, selection: $selection) { destination in
+      List(SettingsDestination.allCases, selection: $navigationModel.selection) { destination in
         Label(destination.title, systemImage: destination.symbol)
           .tag(destination)
       }
@@ -18,14 +19,14 @@ struct SettingsRootView: View {
       .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 230)
     } detail: {
       detail
-        .navigationTitle(selection.title)
+        .navigationTitle(navigationModel.selection.title)
     }
     .frame(minWidth: 620, minHeight: 420)
   }
 
   @ViewBuilder
   private var detail: some View {
-    switch selection {
+    switch navigationModel.selection {
     case .general:
       GeneralSettingsView(
         launchAtLoginController: launchAtLoginController
@@ -41,39 +42,12 @@ struct SettingsRootView: View {
         keyboardShortcutController: keyboardShortcutController
       )
     case .advanced:
-      AdvancedSettingsView(store: store)
+      AdvancedSettingsView(
+        store: store,
+        diagnosticsController: diagnosticsController
+      )
     case .about:
       AboutSettingsView()
-    }
-  }
-}
-
-private enum SettingsDestination: String, CaseIterable, Identifiable {
-  case general
-  case displays
-  case keyboard
-  case advanced
-  case about
-
-  var id: Self { self }
-
-  var title: String {
-    switch self {
-    case .general: "General"
-    case .displays: "Displays"
-    case .keyboard: "Keyboard"
-    case .advanced: "Advanced"
-    case .about: "About"
-    }
-  }
-
-  var symbol: String {
-    switch self {
-    case .general: "gearshape"
-    case .displays: "display.2"
-    case .keyboard: "keyboard"
-    case .advanced: "wrench.and.screwdriver"
-    case .about: "info.circle"
     }
   }
 }
@@ -465,12 +439,36 @@ private struct KeyboardSettingsView: View {
 
 private struct AdvancedSettingsView: View {
   @Bindable var store: DisplayPresentationStore
+  @Bindable var diagnosticsController: DiagnosticsController
+  @State private var showingResetConfirmation = false
 
   var body: some View {
     Form {
-      Section("Detection") {
+      if let focusedConfiguration = diagnosticsController.focusedConfiguration {
+        Section("Focused Display") {
+          LabeledContent("Display", value: focusedConfiguration.name)
+          LabeledContent(
+            "Status",
+            value: focusedConfiguration.isConnected ? "Connected" : "Disconnected"
+          )
+          Button("Clear Focus") {
+            diagnosticsController.focus(on: nil)
+          }
+        }
+      }
+
+      Section("Recovery") {
+        Button(retryTitle) {
+          diagnosticsController.retryHardwareControl()
+        }
+        .disabled(
+          diagnosticsController.focusedMonitorID != nil
+            && diagnosticsController.focusedConfiguration?.isConnected != true
+        )
+
         Button("Re-detect Displays") {
           store.refresh()
+          diagnosticsController.clearStatus()
         }
 
         if store.state.isDetecting {
@@ -482,8 +480,65 @@ private struct AdvancedSettingsView: View {
           }
         }
       }
+
+      Section("Diagnostics") {
+        Button("Copy Diagnostic Summary") {
+          diagnosticsController.copyReport()
+        }
+
+        Button("Export Diagnostic Report…") {
+          diagnosticsController.exportReport()
+        }
+
+        Text("Reports contain MyMonitor, macOS, architecture, and external-display control state only. They exclude window titles, clipboard data, documents, accounts, and unrelated system inventory.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      if let statusMessage = diagnosticsController.statusMessage {
+        Section {
+          Label(statusMessage, systemImage: "checkmark.circle")
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      if let errorMessage = diagnosticsController.errorMessage {
+        Section {
+          Label(errorMessage, systemImage: "exclamationmark.triangle")
+            .foregroundStyle(.red)
+        }
+      }
+
+      Section("Reset") {
+        Button("Reset All Display Preferences…", role: .destructive) {
+          showingResetConfirmation = true
+        }
+
+        Text("This removes saved brightness, range, and control-method preferences. It does not change current physical brightness.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
     }
     .formStyle(.grouped)
+    .confirmationDialog(
+      "Reset all display preferences?",
+      isPresented: $showingResetConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Reset All Display Preferences", role: .destructive) {
+        diagnosticsController.resetAllDisplayPreferences()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Saved settings for every connected and remembered display will be removed. Current brightness will not change.")
+    }
+  }
+
+  private var retryTitle: String {
+    if let focusedConfiguration = diagnosticsController.focusedConfiguration {
+      return "Retry Control for \(focusedConfiguration.name)"
+    }
+    return "Retry Hardware Control"
   }
 }
 

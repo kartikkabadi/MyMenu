@@ -9,21 +9,27 @@ final class SettingsWindowController: NSWindowController {
   private static let minimumSize = NSSize(width: 620, height: 420)
 
   private let launchAtLoginController: LaunchAtLoginController
+  private let navigationModel: SettingsNavigationModel
 
   init(
     store: DisplayPresentationStore,
     configurationStore: DisplayConfigurationStore,
     launchAtLoginController: LaunchAtLoginController,
-    keyboardShortcutController: KeyboardShortcutController
+    keyboardShortcutController: KeyboardShortcutController,
+    navigationModel: SettingsNavigationModel,
+    diagnosticsController: DiagnosticsController
   ) {
     self.launchAtLoginController = launchAtLoginController
+    self.navigationModel = navigationModel
 
     let contentViewController = NSHostingController(
       rootView: SettingsRootView(
         store: store,
         configurationStore: configurationStore,
         launchAtLoginController: launchAtLoginController,
-        keyboardShortcutController: keyboardShortcutController
+        keyboardShortcutController: keyboardShortcutController,
+        navigationModel: navigationModel,
+        diagnosticsController: diagnosticsController
       )
     )
     let window = NSWindow(
@@ -54,9 +60,12 @@ final class SettingsWindowController: NSWindowController {
     fatalError("init(coder:) is unavailable")
   }
 
-  func show() {
+  func show(destination: SettingsDestination? = nil) {
     guard let window else { return }
 
+    if let destination {
+      navigationModel.selection = destination
+    }
     launchAtLoginController.refresh()
     NSApp.activate(ignoringOtherApps: true)
     showWindow(nil)

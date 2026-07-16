@@ -63,6 +63,11 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     publishAll()
   }
 
+  func retryAllControls() {
+    router.reconfigure(force: true)
+    publishAll()
+  }
+
   func setBrightnessRange(
     _ range: ClosedRange<Double>,
     for monitorID: MonitorID
@@ -89,6 +94,16 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     router.forgetDisplayConfiguration(
       for: CGDirectDisplayID(monitorID.rawValue)
     )
+    publishAll()
+  }
+
+  func resetAllConfigurations() {
+    let monitorIDs = currentConfigurations.map(\.id)
+    for monitorID in monitorIDs {
+      router.forgetDisplayConfiguration(
+        for: CGDirectDisplayID(monitorID.rawValue)
+      )
+    }
     publishAll()
   }
 

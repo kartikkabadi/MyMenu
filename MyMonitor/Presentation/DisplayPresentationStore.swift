@@ -50,6 +50,13 @@ final class DisplayPresentationStore {
     controller.retryControl(for: monitorID)
   }
 
+  func retryAllControls() {
+    for monitor in monitors {
+      updateVisibleControl(.checking, for: monitor.id)
+    }
+    controller.retryAllControls()
+  }
+
   func beginBrightnessAdjustment(for monitorID: MonitorID) {
     guard monitor(withID: monitorID)?.brightness != nil else { return }
     activeAdjustments.insert(monitorID)

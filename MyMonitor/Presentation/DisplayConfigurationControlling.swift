@@ -20,4 +20,14 @@ protocol DisplayConfigurationControlling: AnyObject {
   )
 
   func forgetConfiguration(for monitorID: MonitorID)
+  func resetAllConfigurations()
+}
+
+extension DisplayConfigurationControlling {
+  /// Reset all known display settings through the same scoped forget operation used by Settings.
+  func resetAllConfigurations() {
+    for configuration in currentConfigurations {
+      forgetConfiguration(for: configuration.id)
+    }
+  }
 }

@@ -49,6 +49,10 @@ final class DisplayConfigurationStore {
     controller.forgetConfiguration(for: monitorID)
   }
 
+  func resetAllConfigurations() {
+    controller.resetAllConfigurations()
+  }
+
   private func setRange(
     _ range: ClosedRange<Double>,
     for monitorID: MonitorID
