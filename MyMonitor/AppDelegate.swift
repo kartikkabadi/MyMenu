@@ -5,14 +5,20 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
   static private(set) var shared: AppDelegate!
 
-  let router = DisplayRouter()
-
+  private let presentationStore: DisplayPresentationStore
   private var statusItem: NSStatusItem!
   private var popoverController: PopoverWindowController!
 
+  override init() {
+    let router = DisplayRouter()
+    let controller = DisplayRouterAdapter(router: router)
+    presentationStore = DisplayPresentationStore(controller: controller)
+    super.init()
+  }
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     Self.shared = self
-    popoverController = PopoverWindowController(router: router)
+    popoverController = PopoverWindowController(store: presentationStore)
 
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     guard let button = statusItem.button else { return }
@@ -37,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func quitApp() {
     popoverController.close()
-    router.teardownAll()
+    presentationStore.teardown()
     NSApp.terminate(nil)
   }
 }
