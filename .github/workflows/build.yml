@@ -1,17 +1,22 @@
-name: Apply validated lifecycle fixes
+name: Build MyMonitor
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
+      - rescue/monitor-only-core
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apply-and-validate:
+  build:
+    name: Tests, contracts, project drift, and Xcode 26 builds
     runs-on: macos-15
     timeout-minutes: 20
 
@@ -19,54 +24,53 @@ jobs:
       - name: Check out repository head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Select Xcode 26.3
         run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
-      - name: Apply deterministic source fixes
-        run: |
-          python3 scripts/apply_router_iokit_polish.py
-          rm scripts/apply_router_iokit_polish.py
+      - name: Test Swift packages with warnings as errors
+        run: swift test -Xswiftc -warnings-as-errors
+
+      - name: Validate frontend contract
+        run: bash scripts/validate_frontend_contract.sh
+
+      - name: Validate backend concurrency
+        run: bash scripts/validate_backend_concurrency.sh
 
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
 
-      - name: Test Swift packages with warnings as errors
-        run: swift test -Xswiftc -warnings-as-errors
+      - name: Verify generated project is committed
+        run: git diff --exit-code -- MyMonitor.xcodeproj/project.pbxproj
 
-      - name: Validate contracts
+      - name: Build Debug with warnings as errors
         run: |
-          bash scripts/validate_frontend_contract.sh
-          bash scripts/validate_backend_concurrency.sh
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Debug \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Debug \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
 
-      - name: Build Debug and Release with warnings as errors
+      - name: Build Release with warnings as errors
         run: |
-          for configuration in Debug Release; do
-            xcodebuild \
-              -project MyMonitor.xcodeproj \
-              -scheme MyMonitor \
-              -configuration "$configuration" \
-              -sdk macosx \
-              -derivedDataPath "build/DerivedData-$configuration" \
-              ARCHS=arm64 \
-              ONLY_ACTIVE_ARCH=NO \
-              CODE_SIGNING_ALLOWED=NO \
-              SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
-              build
-          done
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Release \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Release \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
 
-      - name: Validate whitespace
+      - name: Check whitespace
         run: git diff --check
-
-      - name: Commit only validated source changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            MyMonitor/Core/DisplayRouter.swift \
-            MyMonitor/ThirdParty/Arm64DDC.swift \
-            MyMonitor.xcodeproj/project.pbxproj
-          git add -u scripts/apply_router_iokit_polish.py
-          git commit -m "Fix display lifecycle and IOKit resource bugs"
-          git push origin HEAD:${{ github.head_ref }}
