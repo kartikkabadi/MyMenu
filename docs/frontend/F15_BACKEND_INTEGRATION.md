@@ -61,9 +61,17 @@ During slider drag:
 
 The probe result carries the already validated service and luminance range into the installed backend, avoiding another synchronous discovery pass.
 
-## Gamma replacement ownership
+## Gamma replacement and ColorSync
 
-Gamma backends register an owner token per display. A stale backend teardown cannot release the curve installed by its replacement. The active owner restores ColorSync state when gamma control is genuinely removed.
+Gamma backends keep an owner token and current brightness for every active display. A stale backend teardown cannot release the curve installed by its replacement.
+
+`CGDisplayRestoreColorSyncSettings()` is process-global rather than display-scoped. Probe cleanup and active-owner teardown therefore follow one guarded operation:
+
+1. restore the system ColorSync calibration;
+2. remove the backend that is actually ending, when applicable;
+3. immediately reapply the brightness curve for every gamma display that remains active.
+
+This restores the removed display correctly without brightening another gamma-controlled display. A stale owner performs neither the global restore nor reapplication.
 
 ## Automated gates
 
@@ -82,6 +90,8 @@ Gamma backends register an owner token per display. A stale backend teardown can
 - private DDC APIs remain outside `DisplayRouter`;
 - the serialized worker queue remains present;
 - latest-value write generations remain present;
+- gamma owner and brightness state remain present;
+- global ColorSync restoration is paired with reapplication of every active gamma display;
 - router reconfiguration generations remain present;
 - asynchronous detecting state remains exposed;
 - the adapter continues to publish cached detecting state;
@@ -125,9 +135,11 @@ CI runs this alongside presentation tests, the frontend contract, project regene
 
 - One DDC display plus one gamma display.
 - One DDC display plus one shade display.
+- Two simultaneous gamma displays at different brightness levels.
+- Probe or remove one gamma display and confirm the other curve is immediately preserved.
 - Forced Hardware when DDC is unavailable.
 - Forced Software when gamma is unavailable.
-- Switch Gamma → Gamma, Gamma → DDC, and Gamma → Shade and confirm ColorSync state is not reset incorrectly.
+- Switch Gamma → Gamma, Gamma → DDC, and Gamma → Shade and confirm ColorSync calibration and remaining active curves stay correct.
 
 ### Spaces and mirroring
 
