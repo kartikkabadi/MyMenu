@@ -1,12 +1,12 @@
 import Foundation
 
 @MainActor
-protocol TerminalResourceReleasing: AnyObject {
+public protocol TerminalResourceReleasing: AnyObject {
   func releaseTerminalResources()
 }
 
 @MainActor
-final class SynchronousTerminalBoundary {
+public final class SynchronousTerminalBoundary {
   private final class WeakReleasedResource {
     weak var value: (any TerminalResourceReleasing)?
 
@@ -15,20 +15,22 @@ final class SynchronousTerminalBoundary {
     }
   }
 
-  private(set) var isTerminated = false
-  private(set) var generation = EngineGeneration.zero
+  public private(set) var isTerminated = false
+  public private(set) var generation = EngineGeneration.zero
   private var resources: [any TerminalResourceReleasing] = []
   private var registeredResourceIDs: Set<ObjectIdentifier> = []
   private var releasedResources: [WeakReleasedResource] = []
 
+  public init() {}
+
   @discardableResult
-  func beginGeneration() -> EngineGeneration {
+  public func beginGeneration() -> EngineGeneration {
     guard !isTerminated else { return generation }
     generation = generation.next()
     return generation
   }
 
-  func register(_ resource: any TerminalResourceReleasing) {
+  public func register(_ resource: any TerminalResourceReleasing) {
     if isTerminated {
       releaseOnce(resource)
       return
@@ -39,11 +41,11 @@ final class SynchronousTerminalBoundary {
     resources.append(resource)
   }
 
-  func permitsPublication(from candidate: EngineGeneration) -> Bool {
+  public func permitsPublication(from candidate: EngineGeneration) -> Bool {
     !isTerminated && candidate == generation
   }
 
-  func terminateSynchronously() {
+  public func terminateSynchronously() {
     guard !isTerminated else { return }
     isTerminated = true
     generation = generation.next()
