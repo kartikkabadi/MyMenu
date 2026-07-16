@@ -15,11 +15,12 @@ protocol BrightnessBackend: AnyObject {
 
   init(displayID: CGDirectDisplayID)
 
-  /// Whether this tier can control the given display (e.g. DDC luminance read succeeds).
+  /// Whether this tier can control the given display (for example, a DDC luminance read succeeds).
   static func probe(displayID: CGDirectDisplayID) -> Bool
 
-  /// Normalized brightness: 0 = full bright, 1 = maximum dim.
-  /// Pass `animated: false` while the user is dragging for instant feedback.
+  /// Normalized user-facing brightness: 0 = darkest, 1 = brightest.
+  /// Every backend must preserve this invariant so switching control tiers never reverses the UI.
+  /// Pass `animated: false` while the user is dragging for immediate feedback.
   func setBrightness(_ value: Double, animated: Bool)
 
   /// Release resources (windows, gamma state, pending DDC writes).
