@@ -84,6 +84,8 @@ grep -q 'live: displays.first' "$ROUTER" \
   || fail "A cached slider value must outrank stale persisted and probed snapshots."
 grep -q 'DisplayReconfigurationPolicy.presentationIDs' "$ROUTER" \
   || fail "Mirror presentation must distinguish full mirroring from partial mirroring."
+grep -q 'DisplayReconfigurationPolicy.controlIDs' "$ROUTER" \
+  || fail "A collapsed full-mirror row must control every connected external mirror member."
 
 if grep -qE 'let (savedBrightness|currentBrightness): Double\?' "$ROUTER"; then
   fail "Reconfiguration inputs must not freeze mutable brightness snapshots."

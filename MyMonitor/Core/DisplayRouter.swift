@@ -126,7 +126,8 @@ final class DisplayRouter {
       + disconnected.sorted(by: Self.configurationSort)
   }
 
-  /// Update one display. Drag updates stay in memory; the final value is persisted on release.
+  /// Update one display. A collapsed full-mirror row fans the same requested value out to every
+  /// connected external member; each display still clamps and persists against its own range.
   func setBrightness(
     _ value: Double,
     for displayID: CGDirectDisplayID,
@@ -134,19 +135,34 @@ final class DisplayRouter {
     persist: Bool = true
   ) {
     guard !hasTornDown else { return }
-    let allowedRange = displays.first(where: { $0.id == displayID })?.allowedRange ?? 0...1
-    let clamped = min(
-      max(value, allowedRange.lowerBound),
-      allowedRange.upperBound
-    )
-    backends[displayID]?.setBrightness(clamped, animated: animated)
 
-    if let index = displays.firstIndex(where: { $0.id == displayID }) {
-      displays[index].brightness = clamped
-      rememberDisplay(displayID, name: displays[index].name)
-    }
-    if persist {
-      persistBrightness(clamped, displayID: displayID)
+    let mirroredIDs = Set(
+      displays.compactMap { item in
+        CGDisplayIsInMirrorSet(item.id) != 0 ? item.id : nil
+      }
+    )
+    let targetIDs = DisplayReconfigurationPolicy.controlIDs(
+      connected: displays.map(\.id),
+      mirrored: mirroredIDs,
+      selected: displayID,
+      isFullMirror: Self.isMirrorMode
+    )
+
+    for targetID in targetIDs {
+      let allowedRange = displays.first(where: { $0.id == targetID })?.allowedRange ?? 0...1
+      let clamped = min(
+        max(value, allowedRange.lowerBound),
+        allowedRange.upperBound
+      )
+      backends[targetID]?.setBrightness(clamped, animated: animated)
+
+      if let index = displays.firstIndex(where: { $0.id == targetID }) {
+        displays[index].brightness = clamped
+        rememberDisplay(targetID, name: displays[index].name)
+      }
+      if persist {
+        persistBrightness(clamped, displayID: targetID)
+      }
     }
   }
 
