@@ -1,0 +1,160 @@
+name: Finalize PR20 landing
+
+on:
+  push:
+    branches:
+      - backend/f15-async-display-control
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-pr20-landing
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: backend/f15-async-display-control
+          fetch-depth: 0
+
+      - name: Remove temporary workflows
+        run: |
+          git rm --ignore-unmatch \
+            .github/workflows/finalize_pr20.yml \
+            .github/workflows/fix_validate_presentation.yml \
+            .github/workflows/validate_pr20_landing.yml
+
+      - name: Apply guarded fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          store = Path("MyMonitor/Presentation/DisplayPresentationStore.swift")
+          text = store.read_text()
+          old = """    case .failed(let message, let canRetry):
+                state = .failed(
+          """
+          new = """    case .failed(let message, let canRetry):
+                activeAdjustments.removeAll()
+                optimisticBrightness.removeAll()
+                state = .failed(
+          """
+          assert text.count(old) == 1, text.count(old)
+          store.write_text(text.replace(old, new, 1))
+
+          tests = Path("MyMonitorTests/Presentation/DisplayPresentationStoreTests.swift")
+          text = tests.read_text()
+          anchor = "  func testRemovingMonitorClearsItsOptimisticValue() {\n"
+          added = """  func testFailedSnapshotClearsOptimisticStateBeforeRecovery() {
+              let monitorID = MonitorPresentationFixtures.studioDisplayID
+              let controller = FakeMonitorController(
+                snapshot: MonitorPresentationFixtures.oneHardwareDisplay
+              )
+              let store = DisplayPresentationStore(controller: controller)
+
+              store.beginBrightnessAdjustment(for: monitorID)
+              store.updateBrightness(0.91, for: monitorID)
+              controller.emit(.failed(message: "Detection failed", canRetry: true))
+
+              var recovered = MonitorPresentationFixtures.hardwareSnapshot
+              recovered.brightness = 0.34
+              controller.emit(.ready([recovered]))
+
+              assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.34)
+            }
+
+            func testTeardownForwardsToControllerExactlyOnce() {
+              let controller = FakeMonitorController(
+                snapshot: MonitorPresentationFixtures.oneHardwareDisplay
+              )
+              let store = DisplayPresentationStore(controller: controller)
+
+              store.teardown()
+
+              XCTAssertEqual(controller.teardownCount, 1)
+            }
+
+          """
+          assert text.count(anchor) == 1, text.count(anchor)
+          tests.write_text(text.replace(anchor, added + anchor, 1))
+
+          bug = Path(".github/ISSUE_TEMPLATE/bug_report.yml")
+          text = bug.read_text()
+          text = text.replace(
+              "Report a reproducible problem with MyMenu",
+              "Report a reproducible problem with MyMonitor",
+          )
+          text = text.replace(
+              """  - type: textarea
+              id: permissions
+              attributes:
+                label: Permissions and tier
+                description: State whether Accessibility or Screen Recording is enabled and which brightness tier is shown.
+          """,
+              """  - type: textarea
+              id: control
+              attributes:
+                label: Control method and diagnostics
+                description: Include the active method shown by MyMonitor (Hardware, Software, or Display shade) and any relevant diagnostic summary.
+          """,
+          )
+          assert "MyMenu" not in text
+          assert "Accessibility or Screen Recording" not in text
+          bug.write_text(text)
+
+          feature = Path(".github/ISSUE_TEMPLATE/feature_request.yml")
+          text = feature.read_text().replace("MyMenu", "MyMonitor")
+          assert "MyMenu" not in text
+          feature.write_text(text)
+          PY
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
+
+      - name: Run merge gate
+        run: |
+          swift test -Xswiftc -warnings-as-errors
+          bash scripts/validate_frontend_contract.sh
+          bash scripts/validate_backend_concurrency.sh
+          ./scripts/generate_xcodeproj.sh
+          git diff --exit-code -- MyMonitor.xcodeproj/project.pbxproj
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Debug \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Debug \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Release \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Release \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
+          git diff --check
+
+      - name: Commit validated final tree
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            MyMonitor/Presentation/DisplayPresentationStore.swift \
+            MyMonitorTests/Presentation/DisplayPresentationStoreTests.swift \
+            .github/ISSUE_TEMPLATE/bug_report.yml \
+            .github/ISSUE_TEMPLATE/feature_request.yml
+          git commit -m "Finalize presentation recovery and repository identity"
+          git push origin HEAD:backend/f15-async-display-control
