@@ -42,6 +42,7 @@ final class DisplayRouterAdapter: MonitorControlling {
       animated: animated,
       persist: persist
     )
+    publishSnapshot()
   }
 
   func retryControl(for monitorID: MonitorID) {
