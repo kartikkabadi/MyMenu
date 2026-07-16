@@ -4,13 +4,13 @@ import XCTest
 @MainActor
 final class DisplayConfigurationStoreTests: XCTestCase {
   func testInitialSnapshotsPreserveConnectedAndRememberedDisplays() {
-    let controller = FakeConfigurationController(
+    let configurationController = FakeConfigurationController(
       configurations: [
         connectedConfiguration(),
         disconnectedConfiguration(),
       ]
     )
-    let store = DisplayConfigurationStore(controller: controller)
+    let store = DisplayConfigurationStore(controller: configurationController)
 
     XCTAssertEqual(store.configurations.count, 2)
     XCTAssertTrue(store.configurations[0].isConnected)
@@ -96,7 +96,7 @@ final class DisplayConfigurationStoreTests: XCTestCase {
     XCTAssertNil(MonitorConfiguration(snapshot: snapshot).fallbackExplanation)
   }
 
-  func testForgetIsScopedToSelectedDisplay() {
+  func testForgetIsScopedToSelectedDisplayAndPublishesItsIdentity() {
     let secondID = MonitorID(rawValue: 99)
     let controller = FakeConfigurationController(
       configurations: [
@@ -113,11 +113,32 @@ final class DisplayConfigurationStoreTests: XCTestCase {
       ]
     )
     let store = DisplayConfigurationStore(controller: controller)
+    var forgottenNotifications: [MonitorID] = []
+    store.onConfigurationForgotten = { forgottenNotifications.append($0) }
 
     store.forgetConfiguration(for: secondID)
 
     XCTAssertEqual(controller.forgottenMonitorIDs, [secondID])
+    XCTAssertEqual(forgottenNotifications, [secondID])
     XCTAssertEqual(store.configurations.count, 2)
+  }
+
+  func testResetPublishesEveryDisplayIdentity() {
+    let rememberedID = MonitorID(rawValue: 77)
+    let controller = FakeConfigurationController(
+      configurations: [
+        connectedConfiguration(),
+        disconnectedConfiguration(),
+      ]
+    )
+    let store = DisplayConfigurationStore(controller: controller)
+    var forgottenNotifications: [MonitorID] = []
+    store.onConfigurationForgotten = { forgottenNotifications.append($0) }
+
+    store.resetAllConfigurations()
+
+    XCTAssertEqual(Set(controller.forgottenMonitorIDs), Set([monitorID, rememberedID]))
+    XCTAssertEqual(Set(forgottenNotifications), Set([monitorID, rememberedID]))
   }
 
   func testControllerSnapshotReplacesOptimisticConfiguration() {
