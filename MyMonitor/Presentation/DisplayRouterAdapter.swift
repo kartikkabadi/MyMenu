@@ -58,14 +58,6 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
       animated: animated,
       persist: persist
     )
-
-    // A probe captures its installation brightness when it begins. If the user commits a new
-    // value through a cached control while that probe is running, restart the generation now so
-    // the older result cannot install a backend with the pre-drag brightness.
-    if persist {
-      restartProbeIfNeeded()
-    }
-
     publishAll()
   }
 
@@ -88,7 +80,6 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
       range,
       for: CGDirectDisplayID(monitorID.rawValue)
     )
-    restartProbeIfNeeded()
     publishAll()
   }
 
@@ -127,6 +118,8 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     router.teardownAll()
   }
 
+  /// Forget/reset can expand the set of eligible control tiers. Restart only those operations;
+  /// brightness and range changes are resolved from live state when the active probe is installed.
   private func restartProbeIfNeeded() {
     guard router.isReconfiguring else { return }
     router.reconfigure(force: true)
