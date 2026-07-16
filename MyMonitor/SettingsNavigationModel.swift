@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 
 @MainActor
@@ -17,11 +18,11 @@ enum SettingsDestination: String, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .general: "General"
-    case .displays: "Displays"
-    case .keyboard: "Keyboard"
-    case .advanced: "Advanced"
-    case .about: "About"
+    case .general: String(localized: "General")
+    case .displays: String(localized: "Displays")
+    case .keyboard: String(localized: "Keyboard")
+    case .advanced: String(localized: "Advanced")
+    case .about: String(localized: "About")
     }
   }
 
