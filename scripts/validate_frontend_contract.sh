@@ -28,8 +28,15 @@ reject_pattern() {
 grep -q 'NSPopover' "$ROOT/MyMonitor/PopoverWindowController.swift" \
   || fail "The primary menu-bar surface must remain a native NSPopover."
 
-reject_pattern 'NSPanel' "$APP" \
-  "Do not replace the native popover or Settings window with NSPanel."
+if grep -InE 'NSPanel' \
+  "$ROOT/MyMonitor/AppDelegate.swift" \
+  "$ROOT/MyMonitor/PopoverWindowController.swift" \
+  "$ROOT/MyMonitor/SettingsWindowController.swift" \
+  || grep -RInE --include='*.swift' 'NSPanel' "$VIEWS"; then
+  fail "Do not replace the native popover or Settings window with NSPanel."
+fi
+
+# OverlayBrightnessBackend legitimately owns one shade panel; ordinary app surfaces may not.
 reject_pattern '\.glassEffect[[:space:]]*\(' "$APP" \
   "Do not apply custom Liquid Glass effects to ordinary app content."
 reject_pattern '\.background[[:space:]]*\([[:space:]]*\.(regularMaterial|ultraThinMaterial|thinMaterial|thickMaterial)' "$VIEWS" \
