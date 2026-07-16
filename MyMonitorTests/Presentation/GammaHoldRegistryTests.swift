@@ -34,6 +34,19 @@ final class GammaHoldRegistryTests: XCTestCase {
     assertBrightness(registry.brightnessByID[2], equals: 0.8)
   }
 
+  func testRemovingTransitionHoldSetPreservesPersistentHolds() {
+    var registry = GammaHoldRegistry<Int>()
+    registry.setBrightness(0.35, for: 1)
+    registry.setBrightness(0.8, for: 2)
+    registry.setBrightness(0.6, for: 3)
+
+    registry.removeBrightness(for: [1, 3])
+
+    XCTAssertNil(registry.brightnessByID[1])
+    XCTAssertNil(registry.brightnessByID[3])
+    assertBrightness(registry.brightnessByID[2], equals: 0.8)
+  }
+
   func testRegistryClampsBrightnessToNormalizedBounds() {
     var registry = GammaHoldRegistry<Int>()
 
