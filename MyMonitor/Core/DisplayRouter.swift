@@ -11,28 +11,28 @@ struct ExternalDisplayItem: Identifiable, Equatable {
 
   var tierLabel: String {
     switch tier {
-    case .ddc: "Hardware brightness"
-    case .gamma: "Software gamma"
-    case .overlay: "Screen overlay"
+    case .ddc: "Hardware control"
+    case .gamma: "Software control"
+    case .overlay: "Display shade"
     }
   }
 }
 
+/// Owns external-display discovery, backend selection, persistence, and lifecycle.
+/// The UI only deals in one invariant: 0 is darkest and 1 is brightest.
 @MainActor
 @Observable
 final class DisplayRouter {
   private(set) var displays: [ExternalDisplayItem] = []
-  private(set) var isScreenRecordingPreviewEnabled =
-    ProcessInfo.processInfo.environment["MYMONITOR_SCREEN_RECORDING_PREVIEW"] == "1"
+
   private var backends: [CGDirectDisplayID: any BrightnessBackend] = [:]
-  private var captureOverlayBackends: [CGDirectDisplayID: OverlayBrightnessBackend] = [:]
   private var reconfigureWorkItem: DispatchWorkItem?
   private var overlayTransitionEndWorkItem: DispatchWorkItem?
-  private var overlayInSpaceTransition = false
   private var gammaHoldDisplayIDs: Set<CGDirectDisplayID> = []
   private let defaults = UserDefaults.standard
 
   private static let overlayTransitionDuration: TimeInterval = 0.9
+  private static let preferencesVersion = "v2"
 
   init() {
     reconfigure()
@@ -42,19 +42,18 @@ final class DisplayRouter {
     registerTerminateObserver()
   }
 
-  /// Sliders to show: one per external in extended mode; single external when mirrored.
+  /// One row per external display in extended mode; one row for a mirrored set.
   var presentationDisplays: [ExternalDisplayItem] {
-    let externals = displays
-    guard !externals.isEmpty else { return [] }
-    if externals.count == 1 { return externals }
-    let mirroredExternals = externals.filter { CGDisplayIsInMirrorSet($0.id) != 0 }
-    if mirroredExternals.count == 1 {
-      return [mirroredExternals[0]]
+    guard displays.count > 1 else { return displays }
+
+    let mirrored = displays.filter { CGDisplayIsInMirrorSet($0.id) != 0 }
+    if mirrored.count == 1 {
+      return [mirrored[0]]
     }
-    return externals
+    return displays
   }
 
-  /// Update brightness. During slider drag use `animated: false` and `persist: false` for responsiveness.
+  /// Update one display. Drag updates stay in memory; the final value is persisted on release.
   func setBrightness(
     _ value: Double,
     for displayID: CGDirectDisplayID,
@@ -63,28 +62,29 @@ final class DisplayRouter {
   ) {
     let clamped = min(max(value, 0), 1)
     backends[displayID]?.setBrightness(clamped, animated: animated)
-    captureOverlayBackends[displayID]?.setBrightness(clamped, animated: animated)
-    if persist {
-      persistBrightness(clamped, displayID: displayID)
-    }
+
     if let index = displays.firstIndex(where: { $0.id == displayID }) {
       displays[index].brightness = clamped
     }
+    if persist {
+      persistBrightness(clamped, displayID: displayID)
+    }
   }
 
+  /// Re-probe only when the set of connected external displays changes.
+  /// Layout and Space changes must not destroy working DDC connections or reset slider state.
   func reconfigure() {
     let externalIDs = Set(Self.onlineExternalDisplayIDs())
+
     guard !externalIDs.isEmpty else {
       teardownAll()
       displays = []
       return
     }
 
-    // Space swipe / layout churn: keep overlay windows, avoid flash.
     if externalIDs == Set(backends.keys), !backends.isEmpty {
-      synchronizeCaptureOverlays()
+      refreshDisplayNames()
       syncOverlayLayout()
-      refreshDisplayMetadata()
       return
     }
 
@@ -97,79 +97,94 @@ final class DisplayRouter {
     var items: [ExternalDisplayItem] = []
     for displayID in externalIDs.sorted() {
       let tier = Self.resolveTier(for: displayID)
-      let saved = loadBrightness(displayID: displayID)
-      let backend = Self.makeBackend(displayID: displayID, tier: tier, saved: saved)
+      let brightness = loadBrightness(displayID: displayID)
+        ?? Self.currentBrightness(displayID: displayID, tier: tier)
+        ?? 1
+      let backend = Self.makeBackend(
+        displayID: displayID,
+        tier: tier,
+        brightness: brightness
+      )
+
       backends[displayID] = backend
       items.append(
         ExternalDisplayItem(
           id: displayID,
           name: Self.displayName(displayID),
-          brightness: saved,
+          brightness: brightness,
           tier: tier
         )
       )
       persistTier(tier, displayID: displayID)
     }
-    displays = items.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    synchronizeCaptureOverlays()
-  }
 
-  /// Adds a capture-visible overlay for tiers that change the display after macOS renders pixels.
-  /// This mode is session-only so a demo setting cannot unexpectedly affect later launches.
-  func setScreenRecordingPreviewEnabled(_ enabled: Bool) {
-    guard enabled != isScreenRecordingPreviewEnabled else { return }
-    isScreenRecordingPreviewEnabled = enabled
-
-    if enabled {
-      synchronizeCaptureOverlays()
-    } else {
-      teardownCaptureOverlays()
+    displays = items.sorted {
+      $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
     }
   }
 
-  /// Relayout overlay frames after Spaces change without destroying windows.
-  func syncOverlayLayout() {
+  func teardownAll() {
+    overlayTransitionEndWorkItem?.cancel()
+    overlayTransitionEndWorkItem = nil
+
+    for displayID in gammaHoldDisplayIDs {
+      DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
+    }
+    gammaHoldDisplayIDs.removeAll()
+
+    for backend in backends.values {
+      backend.teardown()
+    }
+    backends.removeAll()
+  }
+
+  // MARK: - Overlay lifecycle
+
+  private var overlayBackends: [OverlayBrightnessBackend] {
+    backends.values.compactMap { $0 as? OverlayBrightnessBackend }
+  }
+
+  private func syncOverlayLayout() {
     for overlay in overlayBackends {
       overlay.finalizeAfterSpaceTransition()
     }
   }
 
-  /// Debounced end-of-transition sync (no immediate + delayed double storm).
   private func scheduleOverlaySpaceSync() {
     beginOverlaySpaceTransition()
-
     overlayTransitionEndWorkItem?.cancel()
 
     let endWork = DispatchWorkItem { [weak self] in
       self?.endOverlaySpaceTransition()
     }
     overlayTransitionEndWorkItem = endWork
-    DispatchQueue.main.asyncAfter(deadline: .now() + Self.overlayTransitionDuration, execute: endWork)
+    DispatchQueue.main.asyncAfter(
+      deadline: .now() + Self.overlayTransitionDuration,
+      execute: endWork
+    )
   }
 
   private func beginOverlaySpaceTransition() {
-    overlayInSpaceTransition = true
-
-    for item in displays where item.brightness > 0.001 {
-      let overlays = overlays(for: item.id)
-      guard !overlays.isEmpty else { continue }
+    for item in displays where item.brightness < 0.999 {
+      guard let overlay = backends[item.id] as? OverlayBrightnessBackend else { continue }
 
       if Self.isMirrorMode {
         for displayID in Self.mirroredOnlineDisplayIDs(for: item.id) {
-          DisplayGamma.applyBrightnessHold(item.brightness, displayID: displayID, includeBuiltin: true)
+          DisplayGamma.applyBrightnessHold(
+            item.brightness,
+            displayID: displayID,
+            includeBuiltin: true
+          )
           gammaHoldDisplayIDs.insert(displayID)
         }
       }
-      for overlay in overlays {
-        overlay.setSuppressOrderFront(true)
-        overlay.reaffirmAlphaDuringTransition()
-      }
+
+      overlay.setSuppressOrderFront(true)
+      overlay.reaffirmAlphaDuringTransition()
     }
   }
 
   private func endOverlaySpaceTransition() {
-    overlayInSpaceTransition = false
-
     for displayID in gammaHoldDisplayIDs {
       DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
     }
@@ -190,73 +205,9 @@ final class DisplayRouter {
       return online.isEmpty ? [displayID] : online
     }
 
-    guard CGDisplayIsInMirrorSet(displayID) != 0 else {
-      return [displayID]
-    }
-
+    guard CGDisplayIsInMirrorSet(displayID) != 0 else { return [displayID] }
     let mirrored = online.filter { CGDisplayIsInMirrorSet($0) != 0 }
     return mirrored.isEmpty ? [displayID] : mirrored
-  }
-
-  private func refreshDisplayMetadata() {
-    displays = displays.map { item in
-      var copy = item
-      copy.name = Self.displayName(item.id)
-      copy.brightness = loadBrightness(displayID: item.id)
-      return copy
-    }
-  }
-
-  func teardownAll() {
-    teardownCaptureOverlays()
-    for backend in backends.values {
-      backend.teardown()
-    }
-    backends.removeAll()
-  }
-
-  private var overlayBackends: [OverlayBrightnessBackend] {
-    let activeOverlays = backends.values.compactMap { $0 as? OverlayBrightnessBackend }
-    return activeOverlays + Array(captureOverlayBackends.values)
-  }
-
-  private func overlays(for displayID: CGDirectDisplayID) -> [OverlayBrightnessBackend] {
-    var result: [OverlayBrightnessBackend] = []
-    if let activeOverlay = backends[displayID] as? OverlayBrightnessBackend {
-      result.append(activeOverlay)
-    }
-    if let captureOverlay = captureOverlayBackends[displayID] {
-      result.append(captureOverlay)
-    }
-    return result
-  }
-
-  private func synchronizeCaptureOverlays() {
-    guard isScreenRecordingPreviewEnabled else { return }
-
-    let activeDisplayIDs = Set(displays.map(\.id))
-    let staleDisplayIDs = captureOverlayBackends.keys.filter { !activeDisplayIDs.contains($0) }
-    for displayID in staleDisplayIDs {
-      captureOverlayBackends[displayID]?.teardown()
-      captureOverlayBackends.removeValue(forKey: displayID)
-    }
-
-    for item in displays where item.tier != .overlay && captureOverlayBackends[item.id] == nil {
-      let overlay = OverlayBrightnessBackend(displayID: item.id)
-      overlay.setBrightness(item.brightness, animated: false)
-      captureOverlayBackends[item.id] = overlay
-    }
-  }
-
-  private func teardownCaptureOverlays() {
-    for overlay in captureOverlayBackends.values {
-      overlay.teardown()
-    }
-    captureOverlayBackends.removeAll()
-  }
-
-  func quit() {
-    AppDelegate.shared.quitApp()
   }
 
   // MARK: - Tier cascade
@@ -274,28 +225,32 @@ final class DisplayRouter {
     return .overlay
   }
 
+  private static func currentBrightness(
+    displayID: CGDirectDisplayID,
+    tier: BrightnessTier
+  ) -> Double? {
+    guard tier == .ddc else { return nil }
+    return DDCBrightnessBackend.currentBrightness(displayID: displayID)
+  }
+
   private static func makeBackend(
     displayID: CGDirectDisplayID,
     tier: BrightnessTier,
-    saved: Double
+    brightness: Double
   ) -> any BrightnessBackend {
+    let backend: any BrightnessBackend
     switch tier {
-    case .overlay:
-      let backend = OverlayBrightnessBackend(displayID: displayID)
-      backend.setBrightness(saved, animated: false)
-      return backend
     case .ddc:
-      let backend = DDCBrightnessBackend(displayID: displayID)
-      backend.setBrightness(saved, animated: false)
-      return backend
+      backend = DDCBrightnessBackend(displayID: displayID)
     case .gamma:
-      let backend = GammaBrightnessBackend(displayID: displayID)
-      backend.setBrightness(saved, animated: false)
-      return backend
+      backend = GammaBrightnessBackend(displayID: displayID)
+    case .overlay:
+      backend = OverlayBrightnessBackend(displayID: displayID)
     }
+    backend.setBrightness(brightness, animated: false)
+    return backend
   }
 
-  /// Mirrored desktop collapsed to one screen — prefer shade overlay (HDMI dongle path).
   private static func shouldUseOverlayForMirror(displayID: CGDirectDisplayID) -> Bool {
     guard CGDisplayIsBuiltin(displayID) == 0 else { return false }
     guard CGDisplayIsInMirrorSet(displayID) != 0 else { return false }
@@ -316,8 +271,9 @@ final class DisplayRouter {
   }
 
   private static func displayName(_ displayID: CGDirectDisplayID) -> String {
-    if let screen = NSScreen.screens.first(where: {
-      guard let number = $0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+    let screenNumberKey = NSDeviceDescriptionKey("NSScreenNumber")
+    if let screen = NSScreen.screens.first(where: { screen in
+      guard let number = screen.deviceDescription[screenNumberKey] as? NSNumber else {
         return false
       }
       return CGDirectDisplayID(number.uint32Value) == displayID
@@ -327,18 +283,24 @@ final class DisplayRouter {
     return "External Display"
   }
 
+  private func refreshDisplayNames() {
+    displays = displays.map { item in
+      var updated = item
+      updated.name = Self.displayName(item.id)
+      return updated
+    }
+  }
+
   // MARK: - Persistence
 
   private func prefsKey(_ suffix: String, displayID: CGDirectDisplayID) -> String {
-    "MyMonitor.\(displayID).\(suffix)"
+    "MyMonitor.\(Self.preferencesVersion).\(displayID).\(suffix)"
   }
 
-  private func loadBrightness(displayID: CGDirectDisplayID) -> Double {
+  private func loadBrightness(displayID: CGDirectDisplayID) -> Double? {
     let key = prefsKey("brightness", displayID: displayID)
-    if defaults.object(forKey: key) != nil {
-      return min(max(defaults.double(forKey: key), 0), 1)
-    }
-    return 0
+    guard defaults.object(forKey: key) != nil else { return nil }
+    return min(max(defaults.double(forKey: key), 0), 1)
   }
 
   private func persistBrightness(_ value: Double, displayID: CGDirectDisplayID) {
@@ -349,7 +311,7 @@ final class DisplayRouter {
     defaults.set(tier.rawValue, forKey: prefsKey("tier", displayID: displayID))
   }
 
-  // MARK: - Hot-plug & wake
+  // MARK: - Hot-plug, Spaces, and wake
 
   private func registerDisplayCallbacks() {
     let callback: CGDisplayReconfigurationCallBack = { _, flags, userInfo in
@@ -357,9 +319,7 @@ final class DisplayRouter {
       let router = Unmanaged<DisplayRouter>.fromOpaque(userInfo).takeUnretainedValue()
 
       if flags.contains(.beginConfigurationFlag) {
-        Task { @MainActor in
-          router.scheduleOverlaySpaceSync()
-        }
+        Task { @MainActor in router.scheduleOverlaySpaceSync() }
         return
       }
 
@@ -370,20 +330,14 @@ final class DisplayRouter {
         .setModeFlag,
       ]
       if flags.isSubset(of: layoutOnly) {
-        Task { @MainActor in
-          router.scheduleOverlaySpaceSync()
-        }
+        Task { @MainActor in router.scheduleOverlaySpaceSync() }
         return
       }
 
-      guard flags.contains(.addFlag) || flags.contains(.removeFlag) else {
-        return
-      }
-
-      Task { @MainActor in
-        router.scheduleReconfigure()
-      }
+      guard flags.contains(.addFlag) || flags.contains(.removeFlag) else { return }
+      Task { @MainActor in router.scheduleReconfigure() }
     }
+
     let unmanaged = Unmanaged.passUnretained(self)
     CGDisplayRegisterReconfigurationCallback(callback, unmanaged.toOpaque())
   }
@@ -394,9 +348,7 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      Task { @MainActor in
-        self?.scheduleOverlaySpaceSync()
-      }
+      Task { @MainActor in self?.scheduleOverlaySpaceSync() }
     }
 
     NSWorkspace.shared.notificationCenter.addObserver(
@@ -404,20 +356,17 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      Task { @MainActor in
-        self?.scheduleOverlaySpaceSync()
-      }
+      Task { @MainActor in self?.scheduleOverlaySpaceSync() }
     }
+  }
 
-    NotificationCenter.default.addObserver(
-      forName: NSApplication.didChangeOcclusionStateNotification,
+  private func registerWakeObserver() {
+    NSWorkspace.shared.notificationCenter.addObserver(
+      forName: NSWorkspace.didWakeNotification,
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      guard NSApp.occlusionState.contains(.visible) else { return }
-      Task { @MainActor in
-        self?.scheduleOverlaySpaceSync()
-      }
+      Task { @MainActor in self?.scheduleReconfigure() }
     }
   }
 
@@ -427,32 +376,16 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      Task { @MainActor in
-        self?.teardownAll()
-      }
-    }
-  }
-
-  private func registerWakeObserver() {
-    NotificationCenter.default.addObserver(
-      forName: NSWorkspace.didWakeNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor in
-        self?.scheduleReconfigure()
-      }
+      Task { @MainActor in self?.teardownAll() }
     }
   }
 
   private func scheduleReconfigure() {
     reconfigureWorkItem?.cancel()
     let work = DispatchWorkItem { [weak self] in
-      Task { @MainActor in
-        self?.reconfigure()
-      }
+      Task { @MainActor in self?.reconfigure() }
     }
     reconfigureWorkItem = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
   }
 }

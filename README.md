@@ -1,24 +1,27 @@
 # MyMonitor
 
-MyMonitor is a small, local-first macOS menu-bar utility for external-display brightness. It uses the best available control path for each display and leaves the built-in display untouched.
+MyMonitor is a focused, native macOS menu-bar app for controlling external-display brightness.
 
-It also includes two opt-in window tools: window snapping and an Option–Tab switcher. The app explains both features during first-run onboarding and asks for macOS privacy access only when you enable them.
+It has one job: detect connected monitors, choose the best available control method, and make brightness adjustment feel like a built-in macOS control.
 
-## What it does
+## Product scope
 
-- **External brightness:** DDC/CI hardware control, then software gamma, then a screen overlay fallback.
-- **Window snapping:** `Control-Option-Left/Right` snaps the focused window; Up/Down maximizes or centers it.
-- **Option–Tab switcher:** cycles through visible windows and selects on Option release.
-- **Recording preview:** adds a capture-visible dimming overlay for product demos.
-- **Local-first:** no account, analytics, network service, or cloud storage. Preferences live in `UserDefaults`.
+- **Per-monitor brightness** for every connected external display.
+- **Hardware DDC/CI** when the monitor and connection support it.
+- **Software gamma** when hardware control is unavailable.
+- **Display shade fallback** for connections such as HDMI dongles that expose neither DDC nor usable gamma control.
+- **Local-only preferences** in `UserDefaults`.
+
+MyMonitor does not include window management, an Alt-Tab replacement, accounts, analytics, cloud storage, or network services.
 
 ## Requirements
 
 - macOS **26.0 or later**
+- Apple Silicon Mac
 - Xcode **26** for development
-- An external display for brightness control
+- At least one external display
 
-The DDC path uses private macOS display interfaces and may need maintenance after future macOS updates. MyMonitor does not bypass privacy controls.
+The DDC path uses private macOS display interfaces adapted from MonitorControl. It may require maintenance after macOS updates. The gamma and display-shade tiers remain available when DDC is unsupported.
 
 ## Build from source
 
@@ -28,58 +31,41 @@ cd MyMonitor
 ./scripts/build.sh
 ```
 
-The project is dependency-free. `scripts/generate_xcodeproj.sh` discovers every Swift file under `MyMonitor/`, so adding a source file does not require Xcode project bookkeeping.
-
-Open `MyMonitor.xcodeproj` if you want to run from Xcode. For a local release package:
+Or generate and open the Xcode project:
 
 ```bash
-./scripts/package-local.sh
+./scripts/generate_xcodeproj.sh
+open MyMonitor.xcodeproj
 ```
 
-This creates `dist/MyMonitor.zip` and `dist/MyMonitor.dmg`. Both contain `Install MyMonitor.command`, which copies the app to `/Applications` (or `~/Applications` when needed), removes the quarantine flag from this locally built package, and launches the app. It does not grant Accessibility or Screen Recording access for you.
+The native app target has no package-manager dependencies. Swift files under `MyMonitor/` are discovered by `scripts/generate_xcodeproj.sh`.
 
-Local releases are ad hoc signed and not notarized because notarization requires a paid Apple Developer account. Review the source before running any build.
-
-## Fresh permissions test
-
-To remove this app's saved preferences and TCC entries before testing onboarding again:
+## Validation
 
 ```bash
-./scripts/reset-permissions.sh
-```
-
-Brightness control does not need special privacy access. Optional window tools use:
-
-- **Accessibility** to move, resize, and focus windows.
-- **Screen Recording** to read the window list used by the switcher.
-
-If Screen Recording is missing, MyMonitor opens the correct System Settings pane. Bring the app back to the front after granting access so the status refreshes.
-
-For a repeatable recording demo:
-
-```bash
-MYMONITOR_SCREEN_RECORDING_PREVIEW=1 /Applications/MyMonitor.app/Contents/MacOS/MyMonitor
-```
-
-## Website and Whop checkout
-
-The landing page lives in `website/` and is served by the Cloudflare Worker in `worker.js` at [mymonitor.kartikkabadi.com](https://mymonitor.kartikkabadi.com). Wrangler provisions that hostname as a Cloudflare Custom Domain. The `/buy` route redirects to a Whop checkout URL held as a Worker secret, so the checkout URL never needs to be committed to the open-source repository.
-
-```bash
-wrangler secret put WHOP_CHECKOUT_URL
-./scripts/deploy-site.sh
-```
-
-The secret must be the complete Whop checkout URL, including `https://`. The deploy script accepts an already-stored secret or securely updates it from a `WHOP_CHECKOUT_URL` environment variable without printing the value. If you only want to preview the static page locally, serve `website/` with any static file server.
-
-## Development checks
-
-```bash
-./scripts/build.sh
+./scripts/generate_xcodeproj.sh
+xcodebuild \
+  -project MyMonitor.xcodeproj \
+  -scheme MyMonitor \
+  -configuration Debug \
+  -sdk macosx \
+  -derivedDataPath build/DerivedData \
+  CODE_SIGNING_ALLOWED=NO \
+  build
 git diff --check
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [docs/DESK_TEST_RESULTS.md](docs/DESK_TEST_RESULTS.md) for contribution and real-Mac validation notes.
+Every pull request is also built with Xcode 26 in GitHub Actions.
+
+Brightness behavior must be tested on real hardware because DDC support depends on the monitor, cable, dock, and adapter. Useful bug reports include the Mac model, macOS version, monitor model, connection path, selected control tier, and exact reproduction steps.
+
+## Distribution status
+
+Current builds are development artifacts. A public release should be Developer ID signed, notarized, stapled, and accepted by Gatekeeper. MyMonitor must not remove macOS quarantine metadata to bypass that trust path.
+
+## Privacy
+
+Brightness control requires no Accessibility or Screen Recording permission. MyMonitor does not transmit display information or usage data.
 
 ## Third-party code and license
 
