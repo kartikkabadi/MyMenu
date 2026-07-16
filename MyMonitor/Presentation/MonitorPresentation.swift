@@ -35,7 +35,7 @@ enum MonitorControlState: Equatable, Sendable {
   var label: String {
     switch self {
     case .checking:
-      "Checking control…"
+      "Checking hardware control…"
     case .available(let method):
       method.label
     case .unavailable:

@@ -43,6 +43,7 @@ final class DisplayPresentationStore {
   }
 
   func retryControl(for monitorID: MonitorID) {
+    updateVisibleControl(.checking, for: monitorID)
     controller.retryControl(for: monitorID)
   }
 
@@ -158,6 +159,24 @@ final class DisplayPresentationStore {
     }
   }
 
+  private func updateVisibleControl(
+    _ control: MonitorControlState,
+    for monitorID: MonitorID
+  ) {
+    switch state {
+    case .detecting(var cached):
+      updateControl(control, for: monitorID, in: &cached)
+      state = .detecting(cached: cached)
+
+    case .ready(var monitors):
+      updateControl(control, for: monitorID, in: &monitors)
+      state = .ready(monitors)
+
+    case .empty, .failed:
+      break
+    }
+  }
+
   private func updateBrightness(
     _ value: Double,
     for monitorID: MonitorID,
@@ -165,5 +184,14 @@ final class DisplayPresentationStore {
   ) {
     guard let index = monitors.firstIndex(where: { $0.id == monitorID }) else { return }
     monitors[index].brightness = value
+  }
+
+  private func updateControl(
+    _ control: MonitorControlState,
+    for monitorID: MonitorID,
+    in monitors: inout [MonitorPresentation]
+  ) {
+    guard let index = monitors.firstIndex(where: { $0.id == monitorID }) else { return }
+    monitors[index].control = control
   }
 }
