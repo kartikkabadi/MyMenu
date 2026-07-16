@@ -110,6 +110,8 @@ final class DisplayPresentationStore {
       state = presentations.isEmpty ? .empty : .ready(presentations)
 
     case .failed(let message, let canRetry):
+      activeAdjustments.removeAll()
+      optimisticBrightness.removeAll()
       state = .failed(
         DisplayPresentationFailure(message: message, canRetry: canRetry)
       )

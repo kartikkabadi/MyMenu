@@ -198,6 +198,35 @@ final class DisplayPresentationStoreTests: XCTestCase {
     XCTAssertEqual(controller.refreshCount, 1)
   }
 
+  func testFailedSnapshotClearsOptimisticStateBeforeRecovery() {
+    let monitorID = MonitorPresentationFixtures.studioDisplayID
+    let controller = FakeMonitorController(
+      snapshot: MonitorPresentationFixtures.oneHardwareDisplay
+    )
+    let store = DisplayPresentationStore(controller: controller)
+
+    store.beginBrightnessAdjustment(for: monitorID)
+    store.updateBrightness(0.91, for: monitorID)
+    controller.emit(.failed(message: "Detection failed", canRetry: true))
+
+    var recovered = MonitorPresentationFixtures.hardwareSnapshot
+    recovered.brightness = 0.34
+    controller.emit(.ready([recovered]))
+
+    assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.34)
+  }
+
+  func testTeardownForwardsToControllerExactlyOnce() {
+    let controller = FakeMonitorController(
+      snapshot: MonitorPresentationFixtures.oneHardwareDisplay
+    )
+    let store = DisplayPresentationStore(controller: controller)
+
+    store.teardown()
+
+    XCTAssertEqual(controller.teardownCount, 1)
+  }
+
   func testRemovingMonitorClearsItsOptimisticValue() {
     let monitorID = MonitorPresentationFixtures.studioDisplayID
     let controller = FakeMonitorController(
