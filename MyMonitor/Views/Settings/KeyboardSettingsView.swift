@@ -14,6 +14,7 @@ struct KeyboardSettingsView: View {
           Label(errorMessage, systemImage: "exclamationmark.triangle")
             .font(.caption)
             .foregroundStyle(.red)
+            .accessibilityIdentifier("keyboard.shortcutError")
         }
       }
 
@@ -39,6 +40,7 @@ struct KeyboardSettingsView: View {
             .tag(KeyboardBrightnessTarget.display(configuration.id))
           }
         }
+        .accessibilityIdentifier("keyboard.targetDisplay")
 
         Text("If the pointer is not over a controllable external display, MyMonitor uses the first connected external display.")
           .font(.caption)
@@ -64,6 +66,8 @@ struct KeyboardSettingsView: View {
       HStack(spacing: 8) {
         ShortcutRecorderView(
           shortcut: keyboardShortcutController.shortcut(for: action),
+          accessibilityLabel: action.title,
+          accessibilityIdentifier: "keyboard.shortcut.\(action.rawValue)",
           onChange: { keyboardShortcutController.setShortcut($0, for: action) }
         )
 
@@ -77,6 +81,7 @@ struct KeyboardSettingsView: View {
           .foregroundStyle(.secondary)
           .help("Clear \(action.title.lowercased()) shortcut")
           .accessibilityLabel("Clear \(action.title.lowercased()) shortcut")
+          .accessibilityIdentifier("keyboard.clearShortcut.\(action.rawValue)")
         }
       }
     }
