@@ -11,10 +11,10 @@ enum MonitorControlPreference: String, CaseIterable, Identifiable, Equatable, Se
 
   var label: String {
     switch self {
-    case .automatic: "Automatic"
-    case .hardware: "Hardware control"
-    case .software: "Software control"
-    case .shade: "Display shade"
+    case .automatic: String(localized: "Automatic")
+    case .hardware: String(localized: "Hardware control")
+    case .software: String(localized: "Software control")
+    case .shade: String(localized: "Display shade")
     }
   }
 
@@ -71,6 +71,8 @@ struct MonitorConfiguration: Identifiable, Equatable, Sendable {
       return nil
     }
 
-    return "The requested method is unavailable through this connection. MyMonitor is using \(activeMethod.label.lowercased()) instead."
+    return String(
+      localized: "The requested method is unavailable through this connection. MyMonitor is using \(activeMethod.label.lowercased()) instead."
+    )
   }
 }
