@@ -7,7 +7,7 @@ on:
       - rescue/monitor-only-core
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Tests, contracts, and Xcode 26 builds
+    name: Tests, contracts, project drift, and Xcode 26 builds
     runs-on: macos-15
     timeout-minutes: 20
 
@@ -28,8 +28,8 @@ jobs:
       - name: Select Xcode 26.3
         run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
-      - name: Test presentation layer
-        run: swift test
+      - name: Test Swift packages with warnings as errors
+        run: swift test -Xswiftc -warnings-as-errors
 
       - name: Validate frontend contract
         run: bash scripts/validate_frontend_contract.sh
@@ -40,19 +40,10 @@ jobs:
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
 
-      - name: Commit generated project once
-        if: github.event_name == 'pull_request'
-        run: |
-          if git diff --quiet -- MyMonitor.xcodeproj/project.pbxproj; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add MyMonitor.xcodeproj/project.pbxproj
-          git commit -m "Regenerate Xcode project"
-          git push origin HEAD:${{ github.head_ref }}
+      - name: Verify generated project is committed
+        run: git diff --exit-code -- MyMonitor.xcodeproj/project.pbxproj
 
-      - name: Build Debug
+      - name: Build Debug with warnings as errors
         run: |
           xcodebuild \
             -project MyMonitor.xcodeproj \
@@ -63,9 +54,10 @@ jobs:
             ARCHS=arm64 \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             build
 
-      - name: Build Release
+      - name: Build Release with warnings as errors
         run: |
           xcodebuild \
             -project MyMonitor.xcodeproj \
@@ -76,6 +68,7 @@ jobs:
             ARCHS=arm64 \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             build
 
       - name: Check whitespace
