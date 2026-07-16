@@ -2,8 +2,8 @@ import SwiftUI
 
 @available(macOS 26.0, *)
 struct GlassBrightnessControl: View {
-  let displayID: CGDirectDisplayID
-  @Bindable var router: DisplayRouter
+  let monitorID: MonitorID
+  @Bindable var store: DisplayPresentationStore
 
   var body: some View {
     HStack(spacing: 12) {
@@ -14,11 +14,13 @@ struct GlassBrightnessControl: View {
         .frame(width: 22)
 
       Slider(
-        value: sliderBinding(persistWhileDragging: false),
-        in: 0...1,
+        value: sliderBinding,
+        in: store.monitor(withID: monitorID)?.allowedRange ?? 0...1,
         onEditingChanged: { editing in
-          if !editing, let value = router.displays.first(where: { $0.id == displayID })?.brightness {
-            router.setBrightness(value, for: displayID, animated: true, persist: true)
+          if editing {
+            store.beginBrightnessAdjustment(for: monitorID)
+          } else {
+            store.endBrightnessAdjustment(for: monitorID)
           }
         }
       ) {
@@ -36,18 +38,13 @@ struct GlassBrightnessControl: View {
     .padding(.vertical, 8)
   }
 
-  private func sliderBinding(persistWhileDragging: Bool) -> Binding<Double> {
+  private var sliderBinding: Binding<Double> {
     Binding(
       get: {
-        router.displays.first(where: { $0.id == displayID })?.brightness ?? 0
+        store.monitor(withID: monitorID)?.brightness ?? 0
       },
       set: { newValue in
-        router.setBrightness(
-          newValue,
-          for: displayID,
-          animated: false,
-          persist: persistWhileDragging
-        )
+        store.updateBrightness(newValue, for: monitorID)
       }
     )
   }
