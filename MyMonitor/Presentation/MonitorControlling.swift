@@ -25,3 +25,10 @@ protocol MonitorControlling: AnyObject {
   func retryAllControls()
   func teardown()
 }
+
+extension MonitorControlling {
+  /// Controllers without a narrower all-display probe can use their normal refresh path.
+  func retryAllControls() {
+    refresh()
+  }
+}
