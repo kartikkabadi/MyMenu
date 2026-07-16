@@ -39,13 +39,12 @@ struct BrightnessPopoverView: View {
 
   private var monitorRows: some View {
     VStack(spacing: 0) {
-      ForEach(store.monitors) { display in
-        MonitorBrightnessRow(display: display, store: store)
+      ForEach(store.monitors) { monitor in
+        MonitorBrightnessRow(monitor: monitor, store: store)
 
-        if display.id != store.monitors.last?.id {
+        if monitor.id != store.monitors.last?.id {
           Divider()
-            .opacity(0.2)
-            .padding(.leading, 46)
+            .padding(.horizontal, 14)
         }
       }
     }
@@ -88,39 +87,36 @@ struct BrightnessPopoverView: View {
 }
 
 private struct MonitorBrightnessRow: View {
-  let display: MonitorPresentation
+  let monitor: MonitorPresentation
   @Bindable var store: DisplayPresentationStore
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      HStack(spacing: 9) {
-        Image(systemName: "display")
-          .font(.system(size: 13, weight: .medium))
-          .foregroundStyle(.secondary)
-          .frame(width: 22)
-
-        VStack(alignment: .leading, spacing: 1) {
-          Text(display.name)
-            .font(.system(size: 12, weight: .semibold))
-            .lineLimit(1)
-
-          Text(display.control.label)
-            .font(.system(size: 9, weight: .medium))
-            .foregroundStyle(.tertiary)
-        }
+    VStack(alignment: .leading, spacing: 7) {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text(monitor.name)
+          .font(.body.weight(.medium))
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .help(monitor.name)
 
         Spacer(minLength: 8)
 
-        if let brightness = display.brightness {
-          Text("\(Int((brightness * 100).rounded()))%")
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+        if let brightness = monitor.brightness {
+          Text(brightness, format: .percent.precision(.fractionLength(0)))
+            .font(.callout)
             .monospacedDigit()
             .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
         }
       }
 
-      GlassBrightnessControl(monitorID: display.id, store: store)
-        .padding(.horizontal, -4)
+      if monitor.brightness != nil {
+        BrightnessSlider(monitor: monitor, store: store)
+      }
+
+      Text(monitor.control.label)
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 12)
