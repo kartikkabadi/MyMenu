@@ -51,7 +51,7 @@ final class DDCBrightnessBackend: BrightnessBackend {
 }
 
 /// Owns all mutable DDC state and executes every service lookup/read/write on one serial queue.
-private final class DDCConnection: @unchecked Sendable {
+fileprivate final class DDCConnection: @unchecked Sendable {
   fileprivate static let queue = DispatchQueue(
     label: "MyMonitor.globalDDC",
     qos: .userInitiated
