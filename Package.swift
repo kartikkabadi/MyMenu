@@ -32,6 +32,7 @@ let package = Package(
         "DisplayConfigurationStore.swift",
         "KeyboardShortcutController.swift",
         "DiagnosticReport.swift",
+        "DisplayReconfigurationPolicy.swift",
       ]
     ),
     .testTarget(
