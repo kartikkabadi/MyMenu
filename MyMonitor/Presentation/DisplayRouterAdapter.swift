@@ -62,8 +62,8 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     // A probe captures its installation brightness when it begins. If the user commits a new
     // value through a cached control while that probe is running, restart the generation now so
     // the older result cannot install a backend with the pre-drag brightness.
-    if persist, router.isReconfiguring {
-      router.reconfigure(force: true)
+    if persist {
+      restartProbeIfNeeded()
     }
 
     publishAll()
@@ -88,6 +88,7 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
       range,
       for: CGDirectDisplayID(monitorID.rawValue)
     )
+    restartProbeIfNeeded()
     publishAll()
   }
 
@@ -95,6 +96,7 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     _ preference: MonitorControlPreference,
     for monitorID: MonitorID
   ) {
+    // DisplayRouter starts a new forced generation for control-method changes itself.
     router.setControlPreference(
       preference.backendPreference,
       for: CGDirectDisplayID(monitorID.rawValue)
@@ -106,6 +108,7 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     router.forgetDisplayConfiguration(
       for: CGDirectDisplayID(monitorID.rawValue)
     )
+    restartProbeIfNeeded()
     publishAll()
   }
 
@@ -116,11 +119,17 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
         for: CGDirectDisplayID(monitorID.rawValue)
       )
     }
+    restartProbeIfNeeded()
     publishAll()
   }
 
   func teardown() {
     router.teardownAll()
+  }
+
+  private func restartProbeIfNeeded() {
+    guard router.isReconfiguring else { return }
+    router.reconfigure(force: true)
   }
 
   private func observeRouter() {
