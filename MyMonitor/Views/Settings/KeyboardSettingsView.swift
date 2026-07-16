@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct KeyboardSettingsView: View {
+  @Bindable var store: DisplayPresentationStore
   @Bindable var configurationStore: DisplayConfigurationStore
   @Bindable var keyboardShortcutController: KeyboardShortcutController
 
@@ -31,7 +32,7 @@ struct KeyboardSettingsView: View {
           Text("All external displays")
             .tag(KeyboardBrightnessTarget.allExternalDisplays)
 
-          ForEach(configurationStore.configurations) { configuration in
+          ForEach(selectableConfigurations) { configuration in
             Text(
               configuration.isConnected
                 ? configuration.name
@@ -57,6 +58,14 @@ struct KeyboardSettingsView: View {
       }
     }
     .formStyle(.grouped)
+  }
+
+  /// A full mirror is represented by one controllable row. Do not offer its hidden physical members
+  /// as separate hotkey targets, because the representative already fans control out to the set.
+  private var selectableConfigurations: [MonitorConfiguration] {
+    configurationStore.configurations.filter { configuration in
+      !configuration.isConnected || store.monitor(withID: configuration.id) != nil
+    }
   }
 
   private func shortcutRow(
