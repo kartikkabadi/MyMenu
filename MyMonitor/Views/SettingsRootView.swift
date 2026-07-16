@@ -155,11 +155,6 @@ private struct AdvancedSettingsView: View {
           }
         }
       }
-
-      Section {
-        Text("Diagnostics and reset tools will appear here only when their backing behavior is available.")
-          .foregroundStyle(.secondary)
-      }
     }
     .formStyle(.grouped)
   }
