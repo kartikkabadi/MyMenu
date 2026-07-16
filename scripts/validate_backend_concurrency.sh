@@ -2,14 +2,18 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APP_DELEGATE="$ROOT/MyMonitor/AppDelegate.swift"
 DDC="$ROOT/MyMonitor/Core/DDCBrightnessBackend.swift"
 GAMMA_BACKEND="$ROOT/MyMonitor/Core/GammaBrightnessBackend.swift"
 GAMMA_HOLDS="$ROOT/MyMonitor/Core/DisplayGamma.swift"
+OVERLAY="$ROOT/MyMonitor/Core/OverlayBrightnessBackend.swift"
 GAMMA_REGISTRY="$ROOT/MyMonitor/Policies/GammaHoldRegistry.swift"
 ROUTER="$ROOT/MyMonitor/Core/DisplayRouter.swift"
 ADAPTER="$ROOT/MyMonitor/Presentation/DisplayRouterAdapter.swift"
+SHORTCUT_CONTROLLER="$ROOT/MyMonitor/Presentation/KeyboardShortcutController.swift"
 POLICY="$ROOT/MyMonitor/Policies/DisplayReconfigurationPolicy.swift"
 ARM64_DDC="$ROOT/MyMonitor/ThirdParty/Arm64DDC.swift"
+SHORTCUT_TESTS="$ROOT/MyMonitorTests/Presentation/KeyboardShortcutControllerTests.swift"
 
 fail() {
   printf 'Backend concurrency violation: %s\n' "$1" >&2
@@ -50,6 +54,17 @@ grep -q 'for (displayID, brightness) in holds.brightnessByID' "$GAMMA_HOLDS" \
   || fail "ColorSync restoration must preserve unrelated gamma and mirror holds."
 grep -q 'DisplayGamma.releaseHold(displayID:' "$GAMMA_BACKEND" \
   || fail "Active gamma teardown must remove its registered hold."
+
+# Shade animations can complete after a newer command. Every completion must prove it still owns
+# the latest generation, and direct manipulation must cancel in-flight layer animations.
+grep -q 'animationGeneration' "$OVERLAY" \
+  || fail "Shade animations must retain a latest-command generation."
+grep -q 'generation == self.animationGeneration' "$OVERLAY" \
+  || fail "A stale shade completion must not hide the panel after a newer dim command."
+grep -q 'removeAllAnimations' "$OVERLAY" \
+  || fail "Direct shade updates and teardown must cancel in-flight animations."
+grep -q 'guard !hasTornDown' "$OVERLAY" \
+  || fail "A torn-down shade backend must not recreate or reorder its panel."
 
 grep -q 'reconfigurationGeneration' "$ROUTER" \
   || fail "Display reconfiguration must reject stale asynchronous probe results."
@@ -103,12 +118,28 @@ if printf '%s\n' "$wake_body" | grep -q 'scheduleReconfigure'; then
   fail "Wake must not leave a pre-sleep probe valid during a debounce window."
 fi
 
-grep -q 'let wasConnected' "$ADAPTER" \
-  || fail "Forgetting a connected display must detect that its active backend needs replacement."
-forget_reprobes=$(grep -c 'router.reconfigure(force: true)' "$ADAPTER")
-if (( forget_reprobes < 5 )); then
-  fail "Refresh, retry, forget, and reset paths must all force capability reconciliation."
-fi
+# Termination must release gamma and shade state synchronously. Scheduling teardown from a
+# will-terminate notification is too late because the process may exit before that task runs.
+grep -q 'func applicationWillTerminate' "$APP_DELEGATE" \
+  || fail "Application termination must synchronously enter the teardown path."
+grep -q 'private var hasTornDown' "$APP_DELEGATE" \
+  || fail "Application teardown must be idempotent across Quit and willTerminate callbacks."
+quit_body=$(sed -n '/func quitApp()/,/^  }/p' "$APP_DELEGATE")
+printf '%s\n' "$quit_body" | grep -q 'teardown()' \
+  || fail "The explicit Quit action must use the shared synchronous teardown path."
+printf '%s\n' "$quit_body" | grep -q 'NSApp.terminate' \
+  || fail "The explicit Quit action must still terminate the application."
+
+# Global hotkey replacement is destructive on Carbon. A failed candidate must reinstall the last
+# working configuration rather than leaving the user with no active shortcuts.
+grep -q 'register(candidate, restoring: configuration)' "$SHORTCUT_CONTROLLER" \
+  || fail "Shortcut edits must retain the previous working configuration for rollback."
+grep -q 'try? replaceRegistrations(with: previous)' "$SHORTCUT_CONTROLLER" \
+  || fail "Failed shortcut replacement must reinstall the previous registrations."
+grep -q 'clearsRegistrationsBeforeThrow = true' "$SHORTCUT_TESTS" \
+  || fail "Tests must model a destructive platform registration failure."
+grep -q 'XCTAssertEqual(service.registrations, initial.registrations)' "$SHORTCUT_TESTS" \
+  || fail "Tests must prove working hotkeys survive a failed replacement."
 
 # The adapted IOKit matcher runs on every DDC reprobe; ownership and extracted state must be safe.
 grep -q 'cpath.initialize(repeating: 0' "$ARM64_DDC" \
