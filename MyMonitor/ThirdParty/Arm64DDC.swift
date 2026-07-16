@@ -191,10 +191,16 @@ class Arm64DDC: NSObject {
     if let unmanagedEdidUUID = IORegistryEntryCreateCFProperty(entry, "EDID UUID" as CFString, kCFAllocatorDefault, IOOptionBits(kIORegistryIterateRecursively)), let edidUUID = unmanagedEdidUUID.takeRetainedValue() as? String {
       ioregService.edidUUID = edidUUID
     }
-    let cpath = UnsafeMutablePointer<CChar>.allocate(capacity: MemoryLayout<io_string_t>.size)
-    defer { cpath.deallocate() }
-    IORegistryEntryGetPath(entry, kIOServicePlane, cpath)
-    ioregService.ioDisplayLocation = String(cString: cpath)
+    let pathCapacity = MemoryLayout<io_string_t>.size
+    let cpath = UnsafeMutablePointer<CChar>.allocate(capacity: pathCapacity)
+    cpath.initialize(repeating: 0, count: pathCapacity)
+    defer {
+      cpath.deinitialize(count: pathCapacity)
+      cpath.deallocate()
+    }
+    if IORegistryEntryGetPath(entry, kIOServicePlane, cpath) == KERN_SUCCESS {
+      ioregService.ioDisplayLocation = String(cString: cpath)
+    }
     if let unmanagedDisplayAttrs = IORegistryEntryCreateCFProperty(entry, "DisplayAttributes" as CFString, kCFAllocatorDefault, IOOptionBits(kIORegistryIterateRecursively)), let displayAttrs = unmanagedDisplayAttrs.takeRetainedValue() as? NSDictionary {
       ioregService.displayAttributes = displayAttrs
       if let productAttrs = displayAttrs.value(forKey: "ProductAttributes") as? NSDictionary {
@@ -224,6 +230,9 @@ class Arm64DDC: NSObject {
   }
 
   static func setIORegServiceDCPAVServiceProxy(entry: io_service_t, ioregService: inout IOregService) {
+    // Never carry a service handle from a previous proxy when this entry is internal or malformed.
+    ioregService.location = ""
+    ioregService.service = nil
     if let unmanagedLocation = IORegistryEntryCreateCFProperty(entry, "Location" as CFString, kCFAllocatorDefault, IOOptionBits(kIORegistryIterateRecursively)), let location = unmanagedLocation.takeRetainedValue() as? String {
       ioregService.location = location
       if location == "External" {
@@ -259,7 +268,10 @@ class Arm64DDC: NSObject {
         ioregService.serviceLocation = serviceLocation
       } else if objectOfInterest.name == keyDCPAVServiceProxy {
         self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &ioregService)
-        ioregServicesForMatching.append(ioregService)
+        if ioregService.service != nil {
+          ioregServicesForMatching.append(ioregService)
+        }
+        ioregService = IOregService()
       }
       IOObjectRelease(objectOfInterest.entry)
     }

@@ -266,7 +266,7 @@ final class DisplayRouter {
     let expectedIDs = Set(inputs.map(\.displayID))
     guard expectedIDs == Set(Self.onlineExternalDisplayIDs()) else {
       Self.invalidate(ddcResults)
-      handleDisplayTopologyChange()
+      handleDisplayRoutingChange()
       return
     }
 
@@ -671,19 +671,22 @@ final class DisplayRouter {
         return
       }
 
-      let layoutOnly: CGDisplayChangeSummaryFlags = [
-        .desktopShapeChangedFlag,
-        .movedFlag,
-        .setMainFlag,
-        .setModeFlag,
-      ]
-      if flags.isSubset(of: layoutOnly) {
-        Task { @MainActor in router.scheduleOverlaySpaceSync() }
+      if flags.contains(.addFlag) || flags.contains(.removeFlag) {
+        Task { @MainActor in router.handleDisplayRoutingChange() }
         return
       }
 
-      guard flags.contains(.addFlag) || flags.contains(.removeFlag) else { return }
-      Task { @MainActor in router.handleDisplayTopologyChange() }
+      // Mirroring and display-mode changes can change the required backend without changing the
+      // connected ID set. They must enter the same generation-safe routing path as hot-plug.
+      if flags.contains(.desktopShapeChangedFlag) || flags.contains(.setModeFlag) {
+        Task { @MainActor in router.handleDisplayRoutingChange() }
+        return
+      }
+
+      let layoutOnly: CGDisplayChangeSummaryFlags = [.movedFlag, .setMainFlag]
+      if flags.isSubset(of: layoutOnly) {
+        Task { @MainActor in router.scheduleOverlaySpaceSync() }
+      }
     }
 
     let unmanaged = Unmanaged.passUnretained(self)
@@ -696,7 +699,9 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      Task { @MainActor in self?.scheduleOverlaySpaceSync() }
+      // This notification is the fallback for mode/mirror transitions whose Core Graphics flag
+      // sequence varies by macOS release or adapter. Debouncing happens inside the routing path.
+      Task { @MainActor in self?.handleDisplayRoutingChange() }
     }
 
     NSWorkspace.shared.notificationCenter.addObserver(
@@ -730,9 +735,9 @@ final class DisplayRouter {
     }
   }
 
-  /// Remove stale rows and resources immediately, then debounce only the expensive reprobe so a
-  /// burst of Core Graphics callbacks settles into one generation.
-  private func handleDisplayTopologyChange() {
+  /// Reconcile hot-plug, display-mode, and mirror-routing changes. Stale rows and resources are
+  /// removed immediately; only the expensive capability reprobe is debounced.
+  private func handleDisplayRoutingChange() {
     reconfigureWorkItem?.cancel()
     reconfigureWorkItem = nil
     reconfigurationGeneration &+= 1
