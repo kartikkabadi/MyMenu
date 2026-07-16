@@ -96,33 +96,33 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
   }
 
   func forgetConfiguration(for monitorID: MonitorID) {
+    let wasConnected = currentConfigurations.first { $0.id == monitorID }?.isConnected == true
     router.forgetDisplayConfiguration(
       for: CGDirectDisplayID(monitorID.rawValue)
     )
-    restartProbeIfNeeded()
+    if wasConnected {
+      // Forgetting resets the requested method to Automatic. Re-probe now so the active backend
+      // cannot remain on a previously forced Hardware, Software, or Shade implementation.
+      router.reconfigure(force: true)
+    }
     publishAll()
   }
 
   func resetAllConfigurations() {
-    let monitorIDs = currentConfigurations.map(\.id)
-    for monitorID in monitorIDs {
+    let configurations = currentConfigurations
+    for monitorID in configurations.map(\.id) {
       router.forgetDisplayConfiguration(
         for: CGDirectDisplayID(monitorID.rawValue)
       )
     }
-    restartProbeIfNeeded()
+    if configurations.contains(where: \.isConnected) {
+      router.reconfigure(force: true)
+    }
     publishAll()
   }
 
   func teardown() {
     router.teardownAll()
-  }
-
-  /// Forget/reset can expand the set of eligible control tiers. Restart only those operations;
-  /// brightness and range changes are resolved from live state when the active probe is installed.
-  private func restartProbeIfNeeded() {
-    guard router.isReconfiguring else { return }
-    router.reconfigure(force: true)
   }
 
   private func observeRouter() {
