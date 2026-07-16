@@ -154,8 +154,8 @@ final class DisplayRouterAdapter: MonitorControlling, DisplayConfigurationContro
     } onChange: { [weak self] in
       Task { @MainActor in
         guard let self else { return }
-        self.publishAll()
         self.observeRouter()
+        self.publishAll()
       }
     }
   }
