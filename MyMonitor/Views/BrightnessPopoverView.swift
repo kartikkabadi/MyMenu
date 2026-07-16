@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The complete product surface: connected external monitors and their brightness.
 struct BrightnessPopoverView: View {
-  @Bindable var router: DisplayRouter
+  @Bindable var store: DisplayPresentationStore
 
   var body: some View {
     VStack(spacing: 0) {
@@ -11,7 +11,7 @@ struct BrightnessPopoverView: View {
       Divider()
         .opacity(0.35)
 
-      if router.presentationDisplays.isEmpty {
+      if store.monitors.isEmpty {
         emptyState
       } else {
         monitorList
@@ -47,7 +47,7 @@ struct BrightnessPopoverView: View {
       Spacer(minLength: 12)
 
       Button {
-        router.reconfigure()
+        store.refresh()
       } label: {
         Image(systemName: "arrow.clockwise")
           .font(.system(size: 11, weight: .semibold))
@@ -65,10 +65,10 @@ struct BrightnessPopoverView: View {
   private var monitorList: some View {
     ScrollView {
       VStack(spacing: 0) {
-        ForEach(router.presentationDisplays) { display in
-          MonitorBrightnessRow(display: display, router: router)
+        ForEach(store.monitors) { display in
+          MonitorBrightnessRow(display: display, store: store)
 
-          if display.id != router.presentationDisplays.last?.id {
+          if display.id != store.monitors.last?.id {
             Divider()
               .opacity(0.2)
               .padding(.leading, 46)
@@ -99,7 +99,7 @@ struct BrightnessPopoverView: View {
 
   private var footer: some View {
     HStack {
-      let count = router.presentationDisplays.count
+      let count = store.monitors.count
       Text(count == 1 ? "1 monitor" : "\(count) monitors")
         .font(.system(size: 10, weight: .medium))
         .foregroundStyle(.secondary)
@@ -120,8 +120,8 @@ struct BrightnessPopoverView: View {
 }
 
 private struct MonitorBrightnessRow: View {
-  let display: ExternalDisplayItem
-  @Bindable var router: DisplayRouter
+  let display: MonitorPresentation
+  @Bindable var store: DisplayPresentationStore
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -136,20 +136,22 @@ private struct MonitorBrightnessRow: View {
             .font(.system(size: 12, weight: .semibold))
             .lineLimit(1)
 
-          Text(display.tierLabel)
+          Text(display.control.label)
             .font(.system(size: 9, weight: .medium))
             .foregroundStyle(.tertiary)
         }
 
         Spacer(minLength: 8)
 
-        Text("\(Int((display.brightness * 100).rounded()))%")
-          .font(.system(size: 11, weight: .semibold, design: .rounded))
-          .monospacedDigit()
-          .foregroundStyle(.secondary)
+        if let brightness = display.brightness {
+          Text("\(Int((brightness * 100).rounded()))%")
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+        }
       }
 
-      GlassBrightnessControl(displayID: display.id, router: router)
+      GlassBrightnessControl(monitorID: display.id, store: store)
         .padding(.horizontal, -4)
     }
     .padding(.horizontal, 14)
