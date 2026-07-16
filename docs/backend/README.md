@@ -23,10 +23,11 @@ Read these documents before changing display-control code:
 4. [`LIFECYCLE.md`](LIFECYCLE.md) — topology snapshots, state machines, generations, writes, recovery, and teardown.
 5. [`IDENTITY.md`](IDENTITY.md) — durable display identity, duplicate-display handling, persistence, and migration.
 6. [`CONTROL_ENGINES.md`](CONTROL_ENGINES.md) — Apple-native, DDC/CI, Gamma, and Shade contracts.
-7. [`DIAGNOSTICS.md`](DIAGNOSTICS.md) — structured events, failure vocabulary, privacy, support export, and observability.
-8. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) — sequential backend tickets and objective acceptance criteria.
-9. [`QA_MATRIX.md`](QA_MATRIX.md) — automated, simulated, and real-hardware qualification matrix.
-10. [`DECISIONS.md`](DECISIONS.md) — binding decisions and rejected alternatives.
+7. [`EDGE_CASES.md`](EDGE_CASES.md) — binding failure-recovery and automatic cross-domain transition traces.
+8. [`DIAGNOSTICS.md`](DIAGNOSTICS.md) — structured events, failure vocabulary, privacy, support export, and observability.
+9. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) — sequential backend tickets and objective acceptance criteria.
+10. [`QA_MATRIX.md`](QA_MATRIX.md) — automated, simulated, and real-hardware qualification matrix.
+11. [`DECISIONS.md`](DECISIONS.md) — binding decisions and rejected alternatives.
 
 The implementation programme is B1–B13. Method foundations land before B11 activates the final non-mutating cold-launch and continuity-based wake/reconnect policy across every control engine.
 
@@ -157,6 +158,7 @@ Every backend pull request must satisfy all applicable gates:
 
 - Swift tests with warnings treated as errors.
 - Deterministic fake-clock and fake-transport tests for changed policy.
+- The binding traces in `EDGE_CASES.md` when failure recovery or control-domain transitions change.
 - Frontend contract validation.
 - Backend contract validation.
 - Generated Xcode project has zero drift.
@@ -181,5 +183,5 @@ The programme is complete only when:
 6. DDC behavior is testable without IOAV hardware.
 7. Gamma uses a calibration-preserving per-display baseline strategy and is disabled when unsafe.
 8. Structured diagnostics explain why a method was selected and why an operation failed.
-9. The documented hardware matrix has been executed for a release candidate.
+9. The documented hardware matrix and binding edge-case traces have been executed for a release candidate.
 10. A contributor can implement or review a backend ticket without guessing product semantics.
