@@ -28,6 +28,52 @@ final class DisplayPresentationStoreTests: XCTestCase {
     XCTAssertEqual(store.monitors[1].control, .available(.shade))
   }
 
+  func testBackendReorderingDoesNotMoveExistingMonitorRows() {
+    let controller = FakeMonitorController(
+      snapshot: MonitorPresentationFixtures.twoMixedDisplays
+    )
+    let store = DisplayPresentationStore(controller: controller)
+
+    controller.emit(
+      .ready([
+        MonitorPresentationFixtures.shadeSnapshot,
+        MonitorPresentationFixtures.hardwareSnapshot,
+      ])
+    )
+
+    XCTAssertEqual(
+      store.monitors.map(\.id),
+      [
+        MonitorPresentationFixtures.studioDisplayID,
+        MonitorPresentationFixtures.projectorID,
+      ]
+    )
+  }
+
+  func testNewMonitorAppendsWithoutMovingKnownRows() {
+    let controller = FakeMonitorController(
+      snapshot: MonitorPresentationFixtures.twoMixedDisplays
+    )
+    let store = DisplayPresentationStore(controller: controller)
+
+    controller.emit(
+      .ready([
+        MonitorPresentationFixtures.softwareSnapshot,
+        MonitorPresentationFixtures.shadeSnapshot,
+        MonitorPresentationFixtures.hardwareSnapshot,
+      ])
+    )
+
+    XCTAssertEqual(
+      store.monitors.map(\.id),
+      [
+        MonitorPresentationFixtures.studioDisplayID,
+        MonitorPresentationFixtures.projectorID,
+        MonitorPresentationFixtures.dellDisplayID,
+      ]
+    )
+  }
+
   func testBrightnessUpdateClampsToAllowedRangeAndDoesNotPersistWhileDragging() {
     let monitorID = MonitorID(rawValue: 42)
     let snapshot = MonitorSnapshot(
