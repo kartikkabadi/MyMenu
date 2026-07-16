@@ -2,19 +2,18 @@ import AppKit
 import CoreGraphics
 import QuartzCore
 
-/// Per-external-display black overlay dimming (Tier 3).
+/// Per-external-display black overlay used when hardware and gamma control are unavailable.
 @MainActor
 final class OverlayBrightnessBackend: BrightnessBackend {
   static let tier: BrightnessTier = .overlay
 
   private static let settleAnimationDuration: TimeInterval = 0.12
-  /// `.floating` + `fullScreenAuxiliary` — best fit for Safari fullscreen video Spaces (mirror mode).
   private static let overlayWindowLevel = NSWindow.Level.floating
 
   private let displayID: CGDirectDisplayID
   private var panel: NSPanel?
   private var shadeView: NSView?
-  private var currentBrightness: Double = 0
+  private var currentBrightness: Double = 1
   private var suppressOrderFront = false
 
   init(displayID: CGDirectDisplayID) {
@@ -37,6 +36,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
 
   func teardown() {
     panel?.orderOut(nil)
+    panel?.close()
     panel = nil
     shadeView = nil
   }
@@ -45,20 +45,17 @@ final class OverlayBrightnessBackend: BrightnessBackend {
     suppressOrderFront = suppress
   }
 
-  /// During Space swipe: only reaffirm alpha — no `orderFront` / frame churn.
+  /// During a Space swipe, only reaffirm opacity—do not churn window order or frames.
   func reaffirmAlphaDuringTransition() {
-    guard currentBrightness > 0.001 else { return }
+    guard currentBrightness < 0.999 else { return }
     applyBrightness(currentBrightness, animated: false)
   }
 
-  /// After transition settles: one layout pass + single order-front.
+  /// After a Space transition settles, perform one layout pass and restore the shade if needed.
   func finalizeAfterSpaceTransition() {
     suppressOrderFront = false
     syncFrameIfNeeded()
     applyBrightness(currentBrightness, animated: false)
-    if currentBrightness > 0.001 {
-      panel?.orderFrontRegardless()
-    }
   }
 
   func stabilizeForSpaceTransition() {
@@ -70,7 +67,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   func orderFrontIfNeeded() {
-    guard currentBrightness > 0.001, !suppressOrderFront else { return }
+    guard currentBrightness < 0.999, !suppressOrderFront else { return }
     applyBrightness(currentBrightness, animated: false)
     panel?.orderFrontRegardless()
   }
@@ -90,7 +87,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
     let shade = NSView(frame: NSRect(origin: .zero, size: frame.size))
     shade.wantsLayer = true
     shade.layer?.backgroundColor = NSColor.black.cgColor
-    shade.alphaValue = CGFloat(currentBrightness)
+    shade.alphaValue = CGFloat(1 - currentBrightness)
 
     let overlayPanel = NSPanel(
       contentRect: frame,
@@ -119,7 +116,8 @@ final class OverlayBrightnessBackend: BrightnessBackend {
 
     shadeView = shade
     panel = overlayPanel
-    if !suppressOrderFront {
+
+    if currentBrightness < 0.999, !suppressOrderFront {
       overlayPanel.orderFrontRegardless()
     }
   }
@@ -137,12 +135,20 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   private func applyBrightness(_ value: Double, animated: Bool) {
-    guard let shadeView else { return }
-    let alpha = CGFloat(value)
+    guard let shadeView, let panel else { return }
+    let alpha = CGFloat(1 - min(max(value, 0), 1))
 
     if !animated, abs(shadeView.alphaValue - alpha) < 0.0001 {
-      if alpha > 0, !suppressOrderFront { panel?.orderFrontRegardless() }
+      if alpha > 0.001, !suppressOrderFront {
+        panel.orderFrontRegardless()
+      } else if alpha <= 0.001 {
+        panel.orderOut(nil)
+      }
       return
+    }
+
+    if alpha > 0.001, !suppressOrderFront {
+      panel.orderFrontRegardless()
     }
 
     if animated {
@@ -150,16 +156,19 @@ final class OverlayBrightnessBackend: BrightnessBackend {
         context.duration = Self.settleAnimationDuration
         context.timingFunction = CAMediaTimingFunction(name: .easeOut)
         shadeView.animator().alphaValue = alpha
+      } completionHandler: {
+        if alpha <= 0.001 {
+          panel.orderOut(nil)
+        }
       }
     } else {
       CATransaction.begin()
       CATransaction.setDisableActions(true)
       shadeView.alphaValue = alpha
       CATransaction.commit()
-    }
-
-    if alpha > 0, !suppressOrderFront {
-      panel?.orderFrontRegardless()
+      if alpha <= 0.001 {
+        panel.orderOut(nil)
+      }
     }
   }
 
