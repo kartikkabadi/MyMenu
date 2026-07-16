@@ -5,9 +5,14 @@ import Foundation
 @MainActor
 final class KeyboardBrightnessCoordinator {
   private let store: DisplayPresentationStore
+  private let configurationStore: DisplayConfigurationStore
 
-  init(store: DisplayPresentationStore) {
+  init(
+    store: DisplayPresentationStore,
+    configurationStore: DisplayConfigurationStore
+  ) {
     self.store = store
+    self.configurationStore = configurationStore
   }
 
   func perform(
@@ -25,7 +30,22 @@ final class KeyboardBrightnessCoordinator {
       return controllableMonitorIDs
 
     case .display(let monitorID):
-      return store.monitor(withID: monitorID)?.brightness == nil ? [] : [monitorID]
+      if store.monitor(withID: monitorID)?.brightness != nil {
+        return [monitorID]
+      }
+
+      // A full mirror collapses multiple connected physical displays into one presentation row.
+      // Preserve an explicit still-connected target by routing it through that representative; the
+      // router then fans the brightness value out to every external member of the mirror set.
+      let connectedIDs = configurationStore.configurations
+        .filter(\.isConnected)
+        .map(\.id)
+      guard connectedIDs.contains(monitorID),
+        connectedIDs.count > controllableMonitorIDs.count
+      else {
+        return []
+      }
+      return controllableMonitorIDs.first.map { [$0] } ?? []
 
     case .displayUnderPointer:
       if let monitorID = externalMonitorUnderPointer() {
