@@ -97,11 +97,13 @@ final class DisplayRouter {
     var items: [ExternalDisplayItem] = []
     for displayID in externalIDs.sorted() {
       let tier = Self.resolveTier(for: displayID)
-      let savedBrightness = loadBrightness(displayID: displayID)
+      let brightness = loadBrightness(displayID: displayID)
+        ?? Self.currentBrightness(displayID: displayID, tier: tier)
+        ?? 1
       let backend = Self.makeBackend(
         displayID: displayID,
         tier: tier,
-        brightness: savedBrightness
+        brightness: brightness
       )
 
       backends[displayID] = backend
@@ -109,7 +111,7 @@ final class DisplayRouter {
         ExternalDisplayItem(
           id: displayID,
           name: Self.displayName(displayID),
-          brightness: savedBrightness,
+          brightness: brightness,
           tier: tier
         )
       )
@@ -223,6 +225,14 @@ final class DisplayRouter {
     return .overlay
   }
 
+  private static func currentBrightness(
+    displayID: CGDirectDisplayID,
+    tier: BrightnessTier
+  ) -> Double? {
+    guard tier == .ddc else { return nil }
+    return DDCBrightnessBackend.currentBrightness(displayID: displayID)
+  }
+
   private static func makeBackend(
     displayID: CGDirectDisplayID,
     tier: BrightnessTier,
@@ -287,9 +297,9 @@ final class DisplayRouter {
     "MyMonitor.\(Self.preferencesVersion).\(displayID).\(suffix)"
   }
 
-  private func loadBrightness(displayID: CGDirectDisplayID) -> Double {
+  private func loadBrightness(displayID: CGDirectDisplayID) -> Double? {
     let key = prefsKey("brightness", displayID: displayID)
-    guard defaults.object(forKey: key) != nil else { return 1 }
+    guard defaults.object(forKey: key) != nil else { return nil }
     return min(max(defaults.double(forKey: key), 0), 1)
   }
 
