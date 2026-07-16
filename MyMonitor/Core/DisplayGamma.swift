@@ -5,7 +5,7 @@ import CoreGraphics
 enum DisplayGamma {
   private static let minMultiplier: Double = 0.15
   private static let maxMultiplier: Double = 1.0
-  private static var heldBrightness: [CGDirectDisplayID: Double] = [:]
+  private static var holds = GammaHoldRegistry<CGDirectDisplayID>()
 
   @discardableResult
   static func applyBrightness(_ brightness: Double, to displayID: CGDirectDisplayID) -> CGError {
@@ -25,8 +25,8 @@ enum DisplayGamma {
     includeBuiltin: Bool = false
   ) {
     guard includeBuiltin || CGDisplayIsBuiltin(displayID) == 0 else { return }
-    let clamped = min(max(brightness, 0), 1)
-    heldBrightness[displayID] = clamped
+    holds.setBrightness(brightness, for: displayID)
+    guard let clamped = holds.brightnessByID[displayID] else { return }
     _ = applyBrightness(clamped, to: displayID)
   }
 
@@ -35,7 +35,7 @@ enum DisplayGamma {
     includeBuiltin: Bool = false
   ) {
     guard includeBuiltin || CGDisplayIsBuiltin(displayID) == 0 else { return }
-    heldBrightness.removeValue(forKey: displayID)
+    holds.removeBrightness(for: displayID)
     _ = applyBrightness(1.0, to: displayID)
   }
 
@@ -43,7 +43,7 @@ enum DisplayGamma {
   /// restoring one display cannot brighten another gamma backend or a temporary mirror hold.
   static func restoreColorSyncAndReapplyHolds() {
     CGDisplayRestoreColorSyncSettings()
-    for (displayID, brightness) in heldBrightness {
+    for (displayID, brightness) in holds.brightnessByID {
       _ = applyBrightness(brightness, to: displayID)
     }
   }
