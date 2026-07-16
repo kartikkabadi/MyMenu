@@ -1,23 +1,26 @@
 import SwiftUI
 
 enum BrightnessDesign {
-  static let panelWidth: CGFloat = 338
-  static let panelCornerRadius: CGFloat = 24
-  static let panelPadding: CGFloat = 18
-  static let panelHeight: CGFloat = 448
-  static let onboardingHeight: CGFloat = 600
-  static let sectionSpacing: CGFloat = 12
+  /// Compact enough to feel like a system control, large enough for several displays.
+  static let panelWidth: CGFloat = 320
+  static let panelHeight: CGFloat = 280
 
-  static let appearSpring = Animation.spring(response: 0.44, dampingFraction: 0.82)
-  static let appearScale: CGFloat = 0.92
-  static let appearBlur: CGFloat = 10
+  // Retained while the old experimental surfaces are removed in the next cleanup pass.
+  static let panelCornerRadius: CGFloat = 20
+  static let panelPadding: CGFloat = 16
+  static let onboardingHeight: CGFloat = 560
+  static let sectionSpacing: CGFloat = 10
 
-  static let accent = Color(red: 0.23, green: 0.52, blue: 1.0)
-  static let panelBackground = Color(red: 0.055, green: 0.06, blue: 0.09)
-  static let quitTint = Color(red: 0.23, green: 0.52, blue: 1.0)
-  static let quitLabelColor = Color.white
+  static let appearSpring = Animation.spring(response: 0.36, dampingFraction: 0.86)
+  static let appearScale: CGFloat = 0.96
+  static let appearBlur: CGFloat = 6
 
-  // Legacy custom slider (pre–macOS 26)
+  static let accent = Color.accentColor
+  static let panelBackground = Color.clear
+  static let quitTint = Color.accentColor
+  static let quitLabelColor = Color.primary
+
+  // Legacy custom slider values used by the compatibility view.
   static let iconSize: CGFloat = 15
   static let iconMuted = Color.primary.opacity(0.45)
   static let trackHeight: CGFloat = 4
