@@ -188,11 +188,18 @@ fileprivate final class DDCConnection: @unchecked Sendable {
   private func flushPendingWrite() {
     guard !invalidated, let normalized = pendingNormalized else { return }
     pendingNormalized = nil
+    writeBrightness(normalized, allowRematch: true)
+  }
 
-    guard resolveServiceIfNeeded(),
-      let service,
-      readRangeIfNeeded(service: service)
-    else {
+  /// A stale IOAV handle is common immediately after wake. Retry the same latest value once after
+  /// discarding and rematching the service; never loop and never re-enqueue an obsolete generation.
+  private func writeBrightness(_ normalized: Double, allowRematch: Bool) {
+    guard !invalidated, resolveServiceIfNeeded(), let activeService = service else { return }
+
+    guard readRangeIfNeeded(service: activeService) else {
+      if allowRematch {
+        writeBrightness(normalized, allowRematch: false)
+      }
       return
     }
 
@@ -200,16 +207,18 @@ fileprivate final class DDCConnection: @unchecked Sendable {
     guard ddcValue != lastWritten else { return }
 
     if Arm64DDC.write(
-      service: service,
+      service: activeService,
       command: ddcLuminanceVCP,
       value: ddcValue
     ) {
       lastWritten = ddcValue
-    } else {
-      // IOAV service handles can become stale after wake or transient topology changes. Do not pin
-      // a failed handle forever; the next user request will rematch and re-read the range.
-      self.service = nil
-      lastWritten = nil
+      return
+    }
+
+    service = nil
+    lastWritten = nil
+    if allowRematch {
+      writeBrightness(normalized, allowRematch: false)
     }
   }
 
