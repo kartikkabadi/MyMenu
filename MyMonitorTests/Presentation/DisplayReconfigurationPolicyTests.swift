@@ -109,4 +109,40 @@ final class DisplayReconfigurationPolicyTests: XCTestCase {
       [1001, 1002]
     )
   }
+
+  func testFullMirrorRepresentativeControlsEveryExternalMirrorMember() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.controlIDs(
+        connected: [1002, 1001, 1003],
+        mirrored: Set([1001, 1002]),
+        selected: 1002,
+        isFullMirror: true
+      ),
+      [1002, 1001]
+    )
+  }
+
+  func testPartialMirrorControlRemainsScopedToSelectedDisplay() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.controlIDs(
+        connected: [1001, 1002, 1003],
+        mirrored: Set([1001, 1002]),
+        selected: 1001,
+        isFullMirror: false
+      ),
+      [1001]
+    )
+  }
+
+  func testNonMirroredSelectionNeverFansOut() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.controlIDs(
+        connected: [1001, 1002, 1003],
+        mirrored: Set([1001, 1002]),
+        selected: 1003,
+        isFullMirror: true
+      ),
+      [1003]
+    )
+  }
 }
