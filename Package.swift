@@ -19,6 +19,10 @@ let package = Package(
       path: "MyMonitor/Policies"
     ),
     .target(
+      name: "MyMonitorEngineContracts",
+      path: "EngineContracts/Sources/MyMonitorEngineContracts"
+    ),
+    .target(
       name: "MyMonitorPresentation",
       path: "MyMonitor/Presentation",
       exclude: [
@@ -45,6 +49,13 @@ let package = Package(
         "MyMonitorPresentation",
       ],
       path: "MyMonitorTests/Presentation"
+    ),
+    .testTarget(
+      name: "MyMonitorEngineContractsTests",
+      dependencies: [
+        "MyMonitorEngineContracts",
+      ],
+      path: "EngineContracts/Tests/MyMonitorEngineContractsTests"
     ),
   ],
   swiftLanguageVersions: [.v5]
