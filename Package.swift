@@ -17,6 +17,9 @@ let package = Package(
     .target(
       name: "MyMonitorPresentation",
       path: "MyMonitor/Presentation",
+      exclude: [
+        "DisplayRouterAdapter.swift",
+      ],
       sources: [
         "MonitorPresentation.swift",
         "MonitorControlling.swift",
