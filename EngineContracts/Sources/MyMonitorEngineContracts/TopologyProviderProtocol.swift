@@ -1,4 +1,4 @@
-enum DisplayTopologyEvent: Equatable, Codable, Sendable {
+public enum DisplayTopologyEvent: Equatable, Codable, Sendable {
   case connected(RuntimeDisplayID)
   case disconnected(RuntimeDisplayID)
   case modeChanged(RuntimeDisplayID?)
@@ -6,7 +6,7 @@ enum DisplayTopologyEvent: Equatable, Codable, Sendable {
   case wake
 }
 
-protocol DisplayTopologyProviding: Sendable {
+public protocol DisplayTopologyProviding: Sendable {
   func snapshot(reason: ReconfigurationReason) async throws -> DisplayTopologySnapshot
   func events() -> AsyncStream<DisplayTopologyEvent>
 }
