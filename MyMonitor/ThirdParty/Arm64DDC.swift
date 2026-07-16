@@ -245,17 +245,16 @@ class Arm64DDC: NSObject {
     var serviceLocation = 0
     var ioregServicesForMatching: [IOregService] = []
     let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(kIOMainPortDefault)
-    defer {
-      IOObjectRelease(ioregRoot)
-    }
+    guard ioregRoot != IO_OBJECT_NULL else { return ioregServicesForMatching }
+    defer { IOObjectRelease(ioregRoot) }
+
     var iterator = io_iterator_t()
-    defer {
-      IOObjectRelease(iterator)
-    }
-    var ioregService = IOregService()
     guard IORegistryEntryCreateIterator(ioregRoot, "IOService", IOOptionBits(kIORegistryIterateRecursively), &iterator) == KERN_SUCCESS else {
       return ioregServicesForMatching
     }
+    defer { IOObjectRelease(iterator) }
+
+    var framebufferService = IOregService()
     let keyDCPAVServiceProxy = "DCPAVServiceProxy"
     let keysFramebuffer = ["AppleCLCD2", "IOMobileFramebufferShim"]
     while true {
@@ -263,15 +262,17 @@ class Arm64DDC: NSObject {
         break
       }
       if keysFramebuffer.contains(objectOfInterest.name) {
-        ioregService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)
+        framebufferService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)
         serviceLocation += 1
-        ioregService.serviceLocation = serviceLocation
+        framebufferService.serviceLocation = serviceLocation
       } else if objectOfInterest.name == keyDCPAVServiceProxy {
-        self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &ioregService)
-        if ioregService.service != nil {
-          ioregServicesForMatching.append(ioregService)
+        // A framebuffer may expose more than one proxy. Isolate proxy-specific state while
+        // retaining the framebuffer identity for every candidate.
+        var candidate = framebufferService
+        self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &candidate)
+        if candidate.service != nil {
+          ioregServicesForMatching.append(candidate)
         }
-        ioregService = IOregService()
       }
       IOObjectRelease(objectOfInterest.entry)
     }

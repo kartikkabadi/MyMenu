@@ -123,9 +123,9 @@ grep -q 'IOObjectRelease(objectOfInterest.entry)' "$ARM64_DDC" \
   || fail "Matched IORegistry iterator entries must be released after extraction."
 grep -q 'ioregService.service = nil' "$ARM64_DDC" \
   || fail "Each DCPAV proxy lookup must clear a previous service handle first."
-grep -q 'if ioregService.service != nil' "$ARM64_DDC" \
-  || fail "Only validated external IOAV services may enter DDC matching."
-grep -q 'ioregService = IOregService()' "$ARM64_DDC" \
-  || fail "Proxy matching state must reset after each service candidate."
+grep -q 'if candidate.service != nil' "$ARM64_DDC" \
+  || fail "Only validated external IOAV service candidates may enter DDC matching."
+grep -q 'var candidate = framebufferService' "$ARM64_DDC" \
+  || fail "Each IOAV proxy must use isolated state while retaining framebuffer identity."
 
 printf 'Backend concurrency validation passed.\n'
