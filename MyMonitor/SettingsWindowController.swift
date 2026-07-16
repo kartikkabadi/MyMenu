@@ -12,6 +12,7 @@ final class SettingsWindowController: NSWindowController {
 
   init(
     store: DisplayPresentationStore,
+    configurationStore: DisplayConfigurationStore,
     launchAtLoginController: LaunchAtLoginController
   ) {
     self.launchAtLoginController = launchAtLoginController
@@ -19,6 +20,7 @@ final class SettingsWindowController: NSWindowController {
     let contentViewController = NSHostingController(
       rootView: SettingsRootView(
         store: store,
+        configurationStore: configurationStore,
         launchAtLoginController: launchAtLoginController
       )
     )
