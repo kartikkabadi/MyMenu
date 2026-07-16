@@ -48,10 +48,30 @@ jobs:
           path.write_text(text.replace(old, new, 1))
           PY
 
-      - name: Apply guarded router lifetime patch
+      - name: Run guarded router lifetime patch
+        id: patch
+        shell: bash
         run: |
-          python3 scripts/apply_router_lifetime_fix.py
-          rm scripts/apply_router_lifetime_fix.py
+          set +e
+          python3 scripts/apply_router_lifetime_fix.py > router-lifetime-patch.log 2>&1
+          status=$?
+          cat router-lifetime-patch.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [[ "$status" == "0" ]]; then
+            rm scripts/apply_router_lifetime_fix.py
+          fi
+          exit 0
+
+      - name: Upload patch diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: router-lifetime-patch-diagnostic
+          path: router-lifetime-patch.log
+
+      - name: Stop on guarded patch failure
+        if: steps.patch.outputs.status != '0'
+        run: exit 1
 
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
