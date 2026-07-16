@@ -113,6 +113,18 @@ jobs:
           ])
           if text.count(old) != 1:
               raise RuntimeError(f"contract candidate assertion: expected one match, found {text.count(old)}")
+          text = text.replace(old, new, 1)
+
+          old = block([
+              "grep -q 'if ioregService.service != nil' \"$ARM64_DDC\" \\",
+              "  || fail \"Only validated external IOAV services may enter DDC matching.\"",
+          ])
+          new = block([
+              "grep -q 'if candidate.service != nil' \"$ARM64_DDC\" \\",
+              "  || fail \"Only validated external IOAV service candidates may enter DDC matching.\"",
+          ])
+          if text.count(old) != 1:
+              raise RuntimeError(f"contract service assertion: expected one match, found {text.count(old)}")
           contract.write_text(text.replace(old, new, 1))
           PY
 
