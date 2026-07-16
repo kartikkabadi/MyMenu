@@ -38,6 +38,8 @@ No DDC operation may synchronously block its caller.
 
 A hot-plug or explicit retry that occurs during an older probe increments the generation. The older result is invalidated and cannot replace newer state.
 
+A probe also captures brightness, range, and requested-control configuration when it starts. If the user commits a new brightness value, changes the allowed range, forgets one display, or resets all display preferences while probing is active, the adapter immediately starts a newer forced generation. The earlier probe cannot later reinstall its captured pre-change state.
+
 ## DDC writes
 
 Every DDC connection uses the same global serial queue because the adapted transport maintains shared IOAV service state.
@@ -48,7 +50,8 @@ During slider drag:
 - router state updates immediately;
 - DDC requests are latest-value coalesced for 90 ms;
 - obsolete generations do not write;
-- final release persists immediately in app state while the hardware write remains asynchronous.
+- final release persists immediately in app state while the hardware write remains asynchronous;
+- committing through a cached control invalidates any older probe generation before it can install stale brightness.
 
 The probe result carries the already validated service and luminance range into the installed backend, avoiding another synchronous discovery pass.
 
@@ -67,7 +70,8 @@ Gamma backends register an owner token per display. A stale backend teardown can
 - router reconfiguration generations remain present;
 - asynchronous detecting state remains exposed;
 - the adapter continues to publish cached detecting state;
-- reconfiguration continues to use batch DDC probing.
+- reconfiguration continues to use batch DDC probing;
+- committed brightness, range, forget, and reset actions continue to invalidate stale probes.
 
 CI runs this alongside presentation tests, the frontend contract, Debug build, Release build, and whitespace validation.
 
@@ -85,14 +89,17 @@ CI runs this alongside presentation tests, the frontend contract, Debug build, R
 - Confirm the thumb and percentage remain frame-responsive.
 - Confirm hardware follows without reversing or replaying stale intermediate values.
 - Release at a final value and confirm persistence after relaunch.
+- Adjust through a cached row during Retry and confirm probe completion does not roll the display back.
 
 ### Reconfiguration races
 
 - Connect and disconnect a monitor while another monitor is being probed.
 - Trigger Retry twice rapidly.
 - Change the requested control method during a retry.
+- Change minimum/maximum range during a retry.
+- Forget a display or reset all display preferences during a retry.
 - Sleep/wake during detection.
-- Confirm stale rows/backends do not reappear.
+- Confirm stale rows, brightness, bounds, preferences, or backends do not reappear.
 
 ### Mixed backends
 
