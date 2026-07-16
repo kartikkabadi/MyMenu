@@ -71,9 +71,18 @@ final class ClockAndTerminalTests: XCTestCase {
     XCTAssertFalse(boundary.permitsPublication(from: generation))
     XCTAssertEqual(events.values, ["second", "first"])
 
-    let late = ReleaseResource(name: "late", events: events)
-    boundary.register(late)
+    var late: ReleaseResource? = ReleaseResource(name: "late", events: events)
+    weak var releasedLate = late
+    boundary.register(late!)
+    boundary.register(late!)
     XCTAssertEqual(events.values, ["second", "first", "late"])
+
+    late = nil
+    XCTAssertNil(releasedLate, "The terminal boundary must not retain released resources")
+
+    let later = ReleaseResource(name: "later", events: events)
+    boundary.register(later)
+    XCTAssertEqual(events.values, ["second", "first", "late", "later"])
   }
 }
 
