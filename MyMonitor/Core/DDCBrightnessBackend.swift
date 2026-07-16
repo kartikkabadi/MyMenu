@@ -28,6 +28,21 @@ final class DDCBrightnessBackend: BrightnessBackend {
     DDCBrightnessBackend(displayID: displayID).probeConnection()
   }
 
+  /// Read the monitor's current hardware luminance without changing it.
+  static func currentBrightness(displayID: CGDirectDisplayID) -> Double? {
+    let backend = DDCBrightnessBackend(displayID: displayID)
+    backend.resolveServiceIfNeeded()
+    guard let service = backend.avService else { return nil }
+
+    var result: Double?
+    globalDDCQueue.sync {
+      guard let values = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else { return }
+      let maximum = max(values.max, 1)
+      result = min(max(Double(values.current) / Double(maximum), 0), 1)
+    }
+    return result
+  }
+
   private func probeConnection() -> Bool {
     guard Arm64DDC.isArm64 else { return false }
     resolveServiceIfNeeded()
