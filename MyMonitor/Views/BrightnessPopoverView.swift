@@ -186,6 +186,12 @@ struct BrightnessPopoverView: View {
 
   private var footer: some View {
     HStack {
+      Button("Preferences…") {
+        AppDelegate.shared?.showSettings()
+      }
+      .keyboardShortcut(",", modifiers: [.command])
+      .controlSize(.small)
+
       Spacer()
 
       Button("Quit") {
