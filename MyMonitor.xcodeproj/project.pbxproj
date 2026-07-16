@@ -7,61 +7,106 @@
 	objects = {
 
 		b7332a3fd4068af672084b1c /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate.swift"; sourceTree = "<group>"; };
-		4ce974d343a092d39c150dd5 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/AppPreferences.swift"; sourceTree = "<group>"; };
+		bfb4fc146627175a723aba61 /* CarbonGlobalHotKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CarbonGlobalHotKeyService.swift"; sourceTree = "<group>"; };
 		851bd537f21e5d9b5523b545 /* BrightnessBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/BrightnessBackend.swift"; sourceTree = "<group>"; };
 		885564d63b9987f2551a5a0f /* DDCBrightnessBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/DDCBrightnessBackend.swift"; sourceTree = "<group>"; };
+		1109734be562c5663a338a1e /* DisplayConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/DisplayConfiguration.swift"; sourceTree = "<group>"; };
 		24b654e9979d8fa3db1aa110 /* DisplayGamma.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/DisplayGamma.swift"; sourceTree = "<group>"; };
 		1f67bbd7a5da349d5d1f67e6 /* DisplayRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/DisplayRouter.swift"; sourceTree = "<group>"; };
 		83c91501614c830a021141d0 /* GammaBrightnessBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/GammaBrightnessBackend.swift"; sourceTree = "<group>"; };
 		10bbc06f1f2ab424a2994f26 /* OverlayBrightnessBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/OverlayBrightnessBackend.swift"; sourceTree = "<group>"; };
-		997e8526cf95cc9b123649bf /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/PermissionManager.swift"; sourceTree = "<group>"; };
-		61bf0778c2447113249f17b7 /* WindowSnappingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/WindowSnappingService.swift"; sourceTree = "<group>"; };
-		4e57b2123a97d1937d8922d5 /* WindowSwitcherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/WindowSwitcherService.swift"; sourceTree = "<group>"; };
+		b39b375e8904d52ae89791fb /* SystemLaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/SystemLaunchAtLoginService.swift"; sourceTree = "<group>"; };
+		a911ad5ca52e32a2260585be /* FrontendPreviewGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Debug/FrontendPreviewGallery.swift"; sourceTree = "<group>"; };
 		405611d520f4fd811efa2c2d /* BrightnessDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design/BrightnessDesign.swift"; sourceTree = "<group>"; };
-		e1a268f131720890304cc0e6 /* PopoverAnimationToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design/PopoverAnimationToken.swift"; sourceTree = "<group>"; };
-		056359415e281b168f890319 /* PopoverAppearModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design/PopoverAppearModifier.swift"; sourceTree = "<group>"; };
+		2c18bb925f3bf557bd364b83 /* DiagnosticsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DiagnosticsController.swift"; sourceTree = "<group>"; };
+		4691cda9a2d3959320f5c341 /* KeyboardBrightnessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeyboardBrightnessCoordinator.swift"; sourceTree = "<group>"; };
 		8451455b6661353723464dfd /* MyMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MyMonitorApp.swift"; sourceTree = "<group>"; };
+		d4236a87f5d9b1241536684c /* DisplayReconfigurationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Policies/DisplayReconfigurationPolicy.swift"; sourceTree = "<group>"; };
+		440e602db6f5fe21de6b3d7d /* GammaHoldRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Policies/GammaHoldRegistry.swift"; sourceTree = "<group>"; };
 		4ff1b52dd7415371e3cdac92 /* PopoverWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PopoverWindowController.swift"; sourceTree = "<group>"; };
+		7ad2ec693f5a508af9914389 /* DiagnosticReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DiagnosticReport.swift"; sourceTree = "<group>"; };
+		559ccdf75feecb8c5d54103b /* DisplayConfigurationControlling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DisplayConfigurationControlling.swift"; sourceTree = "<group>"; };
+		15e74cd4caae996631946651 /* DisplayConfigurationPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DisplayConfigurationPresentation.swift"; sourceTree = "<group>"; };
+		9e8761061e038ab8d986f4fd /* DisplayConfigurationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DisplayConfigurationStore.swift"; sourceTree = "<group>"; };
+		48d0e7051c00f2ca2fd10627 /* DisplayPresentationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DisplayPresentationStore.swift"; sourceTree = "<group>"; };
+		fe46eabb211c1d9c50f0e2de /* DisplayPresentationStore+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DisplayPresentationStore+Keyboard.swift"; sourceTree = "<group>"; };
+		d1782c3403ee7b2c5f33b688 /* DisplayRouterAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/DisplayRouterAdapter.swift"; sourceTree = "<group>"; };
+		da6035e60bcdc74d344106fc /* KeyboardShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/KeyboardShortcutController.swift"; sourceTree = "<group>"; };
+		1ae5f32fb95e75aab0682ad9 /* LaunchAtLoginController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/LaunchAtLoginController.swift"; sourceTree = "<group>"; };
+		a81a15c18ee9274ac807dfa1 /* MonitorControlling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/MonitorControlling.swift"; sourceTree = "<group>"; };
+		c92bf22e457887a441a31dc3 /* MonitorPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/MonitorPresentation.swift"; sourceTree = "<group>"; };
+		99a3aabb1759309ca1fc3a96 /* MonitorPresentationFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Presentation/MonitorPresentationFixtures.swift"; sourceTree = "<group>"; };
+		bfca974737a7fd99a3ad0f8e /* SettingsNavigationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsNavigationModel.swift"; sourceTree = "<group>"; };
+		4a99397ae312018647721956 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsWindowController.swift"; sourceTree = "<group>"; };
+		8c1461e80480ef92d377eb5c /* SystemKeyboardShortcutPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SystemKeyboardShortcutPreferences.swift"; sourceTree = "<group>"; };
 		50485432d5ff66b0fdcbb465 /* Arm64DDC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ThirdParty/Arm64DDC.swift"; sourceTree = "<group>"; };
 		e635c7eb2d07da1953179aaf /* BrightnessPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/BrightnessPopoverView.swift"; sourceTree = "<group>"; };
-		21242883bc1cfcf1495221fc /* ExternalBrightnessSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/ExternalBrightnessSlider.swift"; sourceTree = "<group>"; };
-		8b1a60e206485331b3e81294 /* GlassBrightnessControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/GlassBrightnessControl.swift"; sourceTree = "<group>"; };
-		149a314f1055171e469a9a7d /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/OnboardingView.swift"; sourceTree = "<group>"; };
-		45a915429b1df55c0831d076 /* WindowSwitcherHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/WindowSwitcherHUDView.swift"; sourceTree = "<group>"; };
+		553987312c85c085592e1990 /* BrightnessSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/BrightnessSlider.swift"; sourceTree = "<group>"; };
+		f38ebfe834237bb7a6a0d0d7 /* AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/Settings/AboutSettingsView.swift"; sourceTree = "<group>"; };
+		389b0faffca3c0870bf0a96a /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/Settings/AdvancedSettingsView.swift"; sourceTree = "<group>"; };
+		858e0d4d01448407698ccf47 /* DisplaysSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/Settings/DisplaysSettingsView.swift"; sourceTree = "<group>"; };
+		30ce075d38ca484186497ab2 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/Settings/GeneralSettingsView.swift"; sourceTree = "<group>"; };
+		844cfa7cb0f328f5f720fc81 /* KeyboardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/Settings/KeyboardSettingsView.swift"; sourceTree = "<group>"; };
+		b6e6d25b5d53ab1a7ac67cfa /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/SettingsRootView.swift"; sourceTree = "<group>"; };
+		6fa9fa12c3ae0438ad50b70b /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/ShortcutRecorderView.swift"; sourceTree = "<group>"; };
 		9446222969d6df045e92face /* MyMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		c22b816941bf3d8a123dbf0d /* CoreDisplay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreDisplay.framework; path = System/Library/Frameworks/CoreDisplay.framework; sourceTree = SDKROOT; };
 		c5549c34fe08563f20571f9f /* CoreDisplay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = c22b816941bf3d8a123dbf0d /* CoreDisplay.framework */; };
+		86a0dafc83d008d14e6b084d /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Resources/Localizable.xcstrings; sourceTree = "<group>"; };
+		cfc2efaba15bdcb190ce5554 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 86a0dafc83d008d14e6b084d /* Localizable.xcstrings */; };
 		INFO_PLIST /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ENTITLEMENTS /* MyMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMonitor.entitlements; sourceTree = "<group>"; };
 		BRIDGING /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
 
 		6dc8acf5d57e224f8163f195 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = b7332a3fd4068af672084b1c /* AppDelegate.swift */; };
-		0279fc5907d93fd779c0a58f /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ce974d343a092d39c150dd5 /* AppPreferences.swift */; };
+		d4c0bae654e25b6db971967c /* CarbonGlobalHotKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = bfb4fc146627175a723aba61 /* CarbonGlobalHotKeyService.swift */; };
 		bee5a3faade2b0464f3e8119 /* BrightnessBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851bd537f21e5d9b5523b545 /* BrightnessBackend.swift */; };
 		1271b40a5b1ad134357f08cf /* DDCBrightnessBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885564d63b9987f2551a5a0f /* DDCBrightnessBackend.swift */; };
+		2009bfbad1915d46f72e8514 /* DisplayConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1109734be562c5663a338a1e /* DisplayConfiguration.swift */; };
 		4419a3bc767a394428e72942 /* DisplayGamma.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24b654e9979d8fa3db1aa110 /* DisplayGamma.swift */; };
 		fe89f5bc714a3969768266b5 /* DisplayRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1f67bbd7a5da349d5d1f67e6 /* DisplayRouter.swift */; };
 		baeb6f4e0b1ff8571c32cb3b /* GammaBrightnessBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83c91501614c830a021141d0 /* GammaBrightnessBackend.swift */; };
 		3e8654c4763b93981a1e7dde /* OverlayBrightnessBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10bbc06f1f2ab424a2994f26 /* OverlayBrightnessBackend.swift */; };
-		3aeee0794358acdb57245fa0 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997e8526cf95cc9b123649bf /* PermissionManager.swift */; };
-		7083aff25194c806462cecb8 /* WindowSnappingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61bf0778c2447113249f17b7 /* WindowSnappingService.swift */; };
-		0d86dfe8703e402951c8c6cb /* WindowSwitcherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4e57b2123a97d1937d8922d5 /* WindowSwitcherService.swift */; };
+		be2cd998584ce9c5c2904a16 /* SystemLaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = b39b375e8904d52ae89791fb /* SystemLaunchAtLoginService.swift */; };
+		880649119c43a93977c2b1a0 /* FrontendPreviewGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = a911ad5ca52e32a2260585be /* FrontendPreviewGallery.swift */; };
 		85a657e065b64cf1e8dfbc89 /* BrightnessDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405611d520f4fd811efa2c2d /* BrightnessDesign.swift */; };
-		ee77733d5840c92e6717ace6 /* PopoverAnimationToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = e1a268f131720890304cc0e6 /* PopoverAnimationToken.swift */; };
-		cfd52b565969ef31df2e1d9c /* PopoverAppearModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056359415e281b168f890319 /* PopoverAppearModifier.swift */; };
+		0bf2487eaf9095f0023e701f /* DiagnosticsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2c18bb925f3bf557bd364b83 /* DiagnosticsController.swift */; };
+		3d65bfa8c078a4c88bed1ba0 /* KeyboardBrightnessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4691cda9a2d3959320f5c341 /* KeyboardBrightnessCoordinator.swift */; };
 		d0bbbabb54eefb2390a2e79b /* MyMonitorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8451455b6661353723464dfd /* MyMonitorApp.swift */; };
+		28d007541cadf9b4600e7582 /* DisplayReconfigurationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = d4236a87f5d9b1241536684c /* DisplayReconfigurationPolicy.swift */; };
+		abab5b24b5db6b526f54ec1c /* GammaHoldRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 440e602db6f5fe21de6b3d7d /* GammaHoldRegistry.swift */; };
 		8d4d998b523839ed58f2d0d4 /* PopoverWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ff1b52dd7415371e3cdac92 /* PopoverWindowController.swift */; };
+		18019ccf4ba8a5dd17d9ad7f /* DiagnosticReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ad2ec693f5a508af9914389 /* DiagnosticReport.swift */; };
+		314f41dbf5ef0c9d9e78815b /* DisplayConfigurationControlling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 559ccdf75feecb8c5d54103b /* DisplayConfigurationControlling.swift */; };
+		c971d30ed607edf9c43b0264 /* DisplayConfigurationPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15e74cd4caae996631946651 /* DisplayConfigurationPresentation.swift */; };
+		821907a64e15f5b45e3b745f /* DisplayConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9e8761061e038ab8d986f4fd /* DisplayConfigurationStore.swift */; };
+		ede8b51a5902c9d72dbabe7a /* DisplayPresentationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48d0e7051c00f2ca2fd10627 /* DisplayPresentationStore.swift */; };
+		2997a1e6d20bbdb19e9371a6 /* DisplayPresentationStore+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = fe46eabb211c1d9c50f0e2de /* DisplayPresentationStore+Keyboard.swift */; };
+		ac547eb672146687c257e7ba /* DisplayRouterAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = d1782c3403ee7b2c5f33b688 /* DisplayRouterAdapter.swift */; };
+		1985fd150da3a761eaa1e47d /* KeyboardShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = da6035e60bcdc74d344106fc /* KeyboardShortcutController.swift */; };
+		bbf12357868b0e958415760f /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ae5f32fb95e75aab0682ad9 /* LaunchAtLoginController.swift */; };
+		e8d008a25e6a5b402a716ed4 /* MonitorControlling.swift in Sources */ = {isa = PBXBuildFile; fileRef = a81a15c18ee9274ac807dfa1 /* MonitorControlling.swift */; };
+		ec45265c817644872827ee24 /* MonitorPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = c92bf22e457887a441a31dc3 /* MonitorPresentation.swift */; };
+		500bf7948273a8356f3fc119 /* MonitorPresentationFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99a3aabb1759309ca1fc3a96 /* MonitorPresentationFixtures.swift */; };
+		309d412a5737621d640b0271 /* SettingsNavigationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = bfca974737a7fd99a3ad0f8e /* SettingsNavigationModel.swift */; };
+		f7abdb20393dbb69937953f6 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4a99397ae312018647721956 /* SettingsWindowController.swift */; };
+		8346f30c4785af86019d41da /* SystemKeyboardShortcutPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8c1461e80480ef92d377eb5c /* SystemKeyboardShortcutPreferences.swift */; };
 		46d82575e438a4974c69a3ca /* Arm64DDC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50485432d5ff66b0fdcbb465 /* Arm64DDC.swift */; };
 		f1ea75582ae27afa712d1dcc /* BrightnessPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = e635c7eb2d07da1953179aaf /* BrightnessPopoverView.swift */; };
-		262931bf164a840552c26cfb /* ExternalBrightnessSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21242883bc1cfcf1495221fc /* ExternalBrightnessSlider.swift */; };
-		eecd509fd465d30060685e46 /* GlassBrightnessControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8b1a60e206485331b3e81294 /* GlassBrightnessControl.swift */; };
-		b342c986d94f89fde7f5ba92 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149a314f1055171e469a9a7d /* OnboardingView.swift */; };
-		e64e426a58f27892e6cf9666 /* WindowSwitcherHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45a915429b1df55c0831d076 /* WindowSwitcherHUDView.swift */; };
+		2e6062b6f0d6cca14936b850 /* BrightnessSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 553987312c85c085592e1990 /* BrightnessSlider.swift */; };
+		1889f6f5cceabcacfb9496f1 /* AboutSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = f38ebfe834237bb7a6a0d0d7 /* AboutSettingsView.swift */; };
+		f019b000af442fbf1c389036 /* AdvancedSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389b0faffca3c0870bf0a96a /* AdvancedSettingsView.swift */; };
+		ada0c8a7905e0c8ea8f9f23c /* DisplaysSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 858e0d4d01448407698ccf47 /* DisplaysSettingsView.swift */; };
+		c23f0ca14d0e42655b7538f3 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30ce075d38ca484186497ab2 /* GeneralSettingsView.swift */; };
+		fa1aa3fb293a45d90a797542 /* KeyboardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 844cfa7cb0f328f5f720fc81 /* KeyboardSettingsView.swift */; };
+		33537d7dfcd9598b6f1dd36a /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = b6e6d25b5d53ab1a7ac67cfa /* SettingsRootView.swift */; };
+		74321ed50becf1d961b2fa56 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6fa9fa12c3ae0438ad50b70b /* ShortcutRecorderView.swift */; };
 		34a04005bcaf206eec990bd9 /* MyMonitor */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = c9ac0e5561b76df225864e4f /* Build configuration list for PBXNativeTarget "MyMonitor" */;
 			buildPhases = (
 				d626f04df571b9bb2451cbfe /* Sources */,
+				5c2473e515024614e403b8b9 /* Resources */,
 				951ddecb505d289b8bc956e6 /* Frameworks */,
 			);
 			buildRules = (
@@ -102,27 +147,98 @@
 			files = (
 
 				6dc8acf5d57e224f8163f195 /* AppDelegate.swift in Sources */,
-				0279fc5907d93fd779c0a58f /* AppPreferences.swift in Sources */,
+
+				d4c0bae654e25b6db971967c /* CarbonGlobalHotKeyService.swift in Sources */,
+
 				bee5a3faade2b0464f3e8119 /* BrightnessBackend.swift in Sources */,
+
 				1271b40a5b1ad134357f08cf /* DDCBrightnessBackend.swift in Sources */,
+
+				2009bfbad1915d46f72e8514 /* DisplayConfiguration.swift in Sources */,
+
 				4419a3bc767a394428e72942 /* DisplayGamma.swift in Sources */,
+
 				fe89f5bc714a3969768266b5 /* DisplayRouter.swift in Sources */,
+
 				baeb6f4e0b1ff8571c32cb3b /* GammaBrightnessBackend.swift in Sources */,
+
 				3e8654c4763b93981a1e7dde /* OverlayBrightnessBackend.swift in Sources */,
-				3aeee0794358acdb57245fa0 /* PermissionManager.swift in Sources */,
-				7083aff25194c806462cecb8 /* WindowSnappingService.swift in Sources */,
-				0d86dfe8703e402951c8c6cb /* WindowSwitcherService.swift in Sources */,
+
+				be2cd998584ce9c5c2904a16 /* SystemLaunchAtLoginService.swift in Sources */,
+
+				880649119c43a93977c2b1a0 /* FrontendPreviewGallery.swift in Sources */,
+
 				85a657e065b64cf1e8dfbc89 /* BrightnessDesign.swift in Sources */,
-				ee77733d5840c92e6717ace6 /* PopoverAnimationToken.swift in Sources */,
-				cfd52b565969ef31df2e1d9c /* PopoverAppearModifier.swift in Sources */,
+
+				0bf2487eaf9095f0023e701f /* DiagnosticsController.swift in Sources */,
+
+				3d65bfa8c078a4c88bed1ba0 /* KeyboardBrightnessCoordinator.swift in Sources */,
+
 				d0bbbabb54eefb2390a2e79b /* MyMonitorApp.swift in Sources */,
+
+				28d007541cadf9b4600e7582 /* DisplayReconfigurationPolicy.swift in Sources */,
+
+				abab5b24b5db6b526f54ec1c /* GammaHoldRegistry.swift in Sources */,
+
 				8d4d998b523839ed58f2d0d4 /* PopoverWindowController.swift in Sources */,
+
+				18019ccf4ba8a5dd17d9ad7f /* DiagnosticReport.swift in Sources */,
+
+				314f41dbf5ef0c9d9e78815b /* DisplayConfigurationControlling.swift in Sources */,
+
+				c971d30ed607edf9c43b0264 /* DisplayConfigurationPresentation.swift in Sources */,
+
+				821907a64e15f5b45e3b745f /* DisplayConfigurationStore.swift in Sources */,
+
+				ede8b51a5902c9d72dbabe7a /* DisplayPresentationStore.swift in Sources */,
+
+				2997a1e6d20bbdb19e9371a6 /* DisplayPresentationStore+Keyboard.swift in Sources */,
+
+				ac547eb672146687c257e7ba /* DisplayRouterAdapter.swift in Sources */,
+
+				1985fd150da3a761eaa1e47d /* KeyboardShortcutController.swift in Sources */,
+
+				bbf12357868b0e958415760f /* LaunchAtLoginController.swift in Sources */,
+
+				e8d008a25e6a5b402a716ed4 /* MonitorControlling.swift in Sources */,
+
+				ec45265c817644872827ee24 /* MonitorPresentation.swift in Sources */,
+
+				500bf7948273a8356f3fc119 /* MonitorPresentationFixtures.swift in Sources */,
+
+				309d412a5737621d640b0271 /* SettingsNavigationModel.swift in Sources */,
+
+				f7abdb20393dbb69937953f6 /* SettingsWindowController.swift in Sources */,
+
+				8346f30c4785af86019d41da /* SystemKeyboardShortcutPreferences.swift in Sources */,
+
 				46d82575e438a4974c69a3ca /* Arm64DDC.swift in Sources */,
+
 				f1ea75582ae27afa712d1dcc /* BrightnessPopoverView.swift in Sources */,
-				262931bf164a840552c26cfb /* ExternalBrightnessSlider.swift in Sources */,
-				eecd509fd465d30060685e46 /* GlassBrightnessControl.swift in Sources */,
-				b342c986d94f89fde7f5ba92 /* OnboardingView.swift in Sources */,
-				e64e426a58f27892e6cf9666 /* WindowSwitcherHUDView.swift in Sources */,
+
+				2e6062b6f0d6cca14936b850 /* BrightnessSlider.swift in Sources */,
+
+				1889f6f5cceabcacfb9496f1 /* AboutSettingsView.swift in Sources */,
+
+				f019b000af442fbf1c389036 /* AdvancedSettingsView.swift in Sources */,
+
+				ada0c8a7905e0c8ea8f9f23c /* DisplaysSettingsView.swift in Sources */,
+
+				c23f0ca14d0e42655b7538f3 /* GeneralSettingsView.swift in Sources */,
+
+				fa1aa3fb293a45d90a797542 /* KeyboardSettingsView.swift in Sources */,
+
+				33537d7dfcd9598b6f1dd36a /* SettingsRootView.swift in Sources */,
+
+				74321ed50becf1d961b2fa56 /* ShortcutRecorderView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5c2473e515024614e403b8b9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				cfc2efaba15bdcb190ce5554 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,29 +362,93 @@
 			children = (
 				INFO_PLIST /* Info.plist */,
 				ENTITLEMENTS /* MyMonitor.entitlements */,
+				86a0dafc83d008d14e6b084d /* Localizable.xcstrings */,
 
 				b7332a3fd4068af672084b1c /* AppDelegate.swift */,
-				4ce974d343a092d39c150dd5 /* AppPreferences.swift */,
+
+				bfb4fc146627175a723aba61 /* CarbonGlobalHotKeyService.swift */,
+
 				851bd537f21e5d9b5523b545 /* BrightnessBackend.swift */,
+
 				885564d63b9987f2551a5a0f /* DDCBrightnessBackend.swift */,
+
+				1109734be562c5663a338a1e /* DisplayConfiguration.swift */,
+
 				24b654e9979d8fa3db1aa110 /* DisplayGamma.swift */,
+
 				1f67bbd7a5da349d5d1f67e6 /* DisplayRouter.swift */,
+
 				83c91501614c830a021141d0 /* GammaBrightnessBackend.swift */,
+
 				10bbc06f1f2ab424a2994f26 /* OverlayBrightnessBackend.swift */,
-				997e8526cf95cc9b123649bf /* PermissionManager.swift */,
-				61bf0778c2447113249f17b7 /* WindowSnappingService.swift */,
-				4e57b2123a97d1937d8922d5 /* WindowSwitcherService.swift */,
+
+				b39b375e8904d52ae89791fb /* SystemLaunchAtLoginService.swift */,
+
+				a911ad5ca52e32a2260585be /* FrontendPreviewGallery.swift */,
+
 				405611d520f4fd811efa2c2d /* BrightnessDesign.swift */,
-				e1a268f131720890304cc0e6 /* PopoverAnimationToken.swift */,
-				056359415e281b168f890319 /* PopoverAppearModifier.swift */,
+
+				2c18bb925f3bf557bd364b83 /* DiagnosticsController.swift */,
+
+				4691cda9a2d3959320f5c341 /* KeyboardBrightnessCoordinator.swift */,
+
 				8451455b6661353723464dfd /* MyMonitorApp.swift */,
+
+				d4236a87f5d9b1241536684c /* DisplayReconfigurationPolicy.swift */,
+
+				440e602db6f5fe21de6b3d7d /* GammaHoldRegistry.swift */,
+
 				4ff1b52dd7415371e3cdac92 /* PopoverWindowController.swift */,
+
+				7ad2ec693f5a508af9914389 /* DiagnosticReport.swift */,
+
+				559ccdf75feecb8c5d54103b /* DisplayConfigurationControlling.swift */,
+
+				15e74cd4caae996631946651 /* DisplayConfigurationPresentation.swift */,
+
+				9e8761061e038ab8d986f4fd /* DisplayConfigurationStore.swift */,
+
+				48d0e7051c00f2ca2fd10627 /* DisplayPresentationStore.swift */,
+
+				fe46eabb211c1d9c50f0e2de /* DisplayPresentationStore+Keyboard.swift */,
+
+				d1782c3403ee7b2c5f33b688 /* DisplayRouterAdapter.swift */,
+
+				da6035e60bcdc74d344106fc /* KeyboardShortcutController.swift */,
+
+				1ae5f32fb95e75aab0682ad9 /* LaunchAtLoginController.swift */,
+
+				a81a15c18ee9274ac807dfa1 /* MonitorControlling.swift */,
+
+				c92bf22e457887a441a31dc3 /* MonitorPresentation.swift */,
+
+				99a3aabb1759309ca1fc3a96 /* MonitorPresentationFixtures.swift */,
+
+				bfca974737a7fd99a3ad0f8e /* SettingsNavigationModel.swift */,
+
+				4a99397ae312018647721956 /* SettingsWindowController.swift */,
+
+				8c1461e80480ef92d377eb5c /* SystemKeyboardShortcutPreferences.swift */,
+
 				50485432d5ff66b0fdcbb465 /* Arm64DDC.swift */,
+
 				e635c7eb2d07da1953179aaf /* BrightnessPopoverView.swift */,
-				21242883bc1cfcf1495221fc /* ExternalBrightnessSlider.swift */,
-				8b1a60e206485331b3e81294 /* GlassBrightnessControl.swift */,
-				149a314f1055171e469a9a7d /* OnboardingView.swift */,
-				45a915429b1df55c0831d076 /* WindowSwitcherHUDView.swift */,
+
+				553987312c85c085592e1990 /* BrightnessSlider.swift */,
+
+				f38ebfe834237bb7a6a0d0d7 /* AboutSettingsView.swift */,
+
+				389b0faffca3c0870bf0a96a /* AdvancedSettingsView.swift */,
+
+				858e0d4d01448407698ccf47 /* DisplaysSettingsView.swift */,
+
+				30ce075d38ca484186497ab2 /* GeneralSettingsView.swift */,
+
+				844cfa7cb0f328f5f720fc81 /* KeyboardSettingsView.swift */,
+
+				b6e6d25b5d53ab1a7ac67cfa /* SettingsRootView.swift */,
+
+				6fa9fa12c3ae0438ad50b70b /* ShortcutRecorderView.swift */,
 			);
 			path = MyMonitor;
 			sourceTree = "<group>";
