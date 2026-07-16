@@ -35,8 +35,8 @@ enum KeyboardShortcutAction: UInt32, Codable, CaseIterable, Equatable, Hashable,
 
   var title: String {
     switch self {
-    case .decreaseBrightness: "Decrease brightness"
-    case .increaseBrightness: "Increase brightness"
+    case .decreaseBrightness: String(localized: "Decrease brightness")
+    case .increaseBrightness: String(localized: "Increase brightness")
     }
   }
 
@@ -151,7 +151,9 @@ final class KeyboardShortcutController {
     }
 
     if let shortcut, !shortcut.isValid {
-      errorMessage = "Shortcuts must include at least one modifier key."
+      errorMessage = String(
+        localized: "Shortcuts must include at least one modifier key."
+      )
       return
     }
 
@@ -159,7 +161,9 @@ final class KeyboardShortcutController {
       let increase = candidate.increaseShortcut,
       decrease == increase
     {
-      errorMessage = "Increase and decrease brightness cannot use the same shortcut."
+      errorMessage = String(
+        localized: "Increase and decrease brightness cannot use the same shortcut."
+      )
       return
     }
 
