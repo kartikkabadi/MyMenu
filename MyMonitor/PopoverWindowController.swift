@@ -7,17 +7,20 @@ final class PopoverWindowController: NSObject {
   let store: DisplayPresentationStore
 
   private let popover: NSPopover
-  private let contentViewController: NSHostingController<BrightnessPopoverView>
+  private let contentViewController: PopoverHostingController<BrightnessPopoverView>
 
   init(store: DisplayPresentationStore) {
     self.store = store
     self.popover = NSPopover()
-    self.contentViewController = NSHostingController(
+    self.contentViewController = PopoverHostingController(
       rootView: BrightnessPopoverView(store: store)
     )
     super.init()
 
     contentViewController.sizingOptions = [.preferredContentSize]
+    contentViewController.onPreferredContentSizeChange = { [weak self] size in
+      self?.applyContentSize(size)
+    }
 
     popover.behavior = .transient
     popover.animates = true
@@ -47,15 +50,40 @@ final class PopoverWindowController: NSObject {
   private func prepareContentSize() {
     contentViewController.view.layoutSubtreeIfNeeded()
 
-    let fittingSize = contentViewController.view.fittingSize
-    let height = min(
-      max(ceil(fittingSize.height), 1),
-      BrightnessDesign.maximumPopoverHeight
+    let preferred = contentViewController.preferredContentSize
+    let measured = preferred.height > 1
+      ? preferred
+      : contentViewController.view.fittingSize
+    applyContentSize(measured)
+  }
+
+  private func applyContentSize(_ size: NSSize) {
+    let nextSize = NSSize(
+      width: BrightnessDesign.popoverWidth,
+      height: min(
+        max(ceil(size.height), 1),
+        BrightnessDesign.maximumPopoverHeight
+      )
     )
 
-    popover.contentSize = NSSize(
-      width: BrightnessDesign.popoverWidth,
-      height: height
-    )
+    guard abs(popover.contentSize.width - nextSize.width) > 0.5
+      || abs(popover.contentSize.height - nextSize.height) > 0.5
+    else {
+      return
+    }
+
+    popover.contentSize = nextSize
+  }
+}
+
+@MainActor
+private final class PopoverHostingController<Content: View>: NSHostingController<Content> {
+  var onPreferredContentSizeChange: ((NSSize) -> Void)?
+
+  override var preferredContentSize: NSSize {
+    didSet {
+      guard oldValue != preferredContentSize else { return }
+      onPreferredContentSizeChange?(preferredContentSize)
+    }
   }
 }
