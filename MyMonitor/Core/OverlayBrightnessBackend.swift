@@ -15,6 +15,8 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   private var shadeView: NSView?
   private var currentBrightness: Double = 1
   private var suppressOrderFront = false
+  private var animationGeneration: UInt64 = 0
+  private var hasTornDown = false
 
   init(displayID: CGDirectDisplayID) {
     self.displayID = displayID
@@ -28,6 +30,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   func setBrightness(_ value: Double, animated: Bool) {
+    guard !hasTornDown else { return }
     let clamped = min(max(value, 0), 1)
     currentBrightness = clamped
     ensurePanel()
@@ -35,6 +38,10 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   func teardown() {
+    guard !hasTornDown else { return }
+    hasTornDown = true
+    animationGeneration &+= 1
+    shadeView?.layer?.removeAllAnimations()
     panel?.orderOut(nil)
     panel?.close()
     panel = nil
@@ -42,17 +49,19 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   func setSuppressOrderFront(_ suppress: Bool) {
+    guard !hasTornDown else { return }
     suppressOrderFront = suppress
   }
 
   /// During a Space swipe, only reaffirm opacity—do not churn window order or frames.
   func reaffirmAlphaDuringTransition() {
-    guard currentBrightness < 0.999 else { return }
+    guard !hasTornDown, currentBrightness < 0.999 else { return }
     applyBrightness(currentBrightness, animated: false)
   }
 
   /// After a Space transition settles, perform one layout pass and restore the shade if needed.
   func finalizeAfterSpaceTransition() {
+    guard !hasTornDown else { return }
     suppressOrderFront = false
     syncFrameIfNeeded()
     applyBrightness(currentBrightness, animated: false)
@@ -67,7 +76,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   func orderFrontIfNeeded() {
-    guard currentBrightness < 0.999, !suppressOrderFront else { return }
+    guard !hasTornDown, currentBrightness < 0.999, !suppressOrderFront else { return }
     applyBrightness(currentBrightness, animated: false)
     panel?.orderFrontRegardless()
   }
@@ -75,7 +84,7 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   // MARK: - Panel lifecycle
 
   private func ensurePanel() {
-    guard !Self.isBuiltin(displayID) else { return }
+    guard !hasTornDown, !Self.isBuiltin(displayID) else { return }
     guard let screen = Self.screen(for: displayID) else { return }
 
     if panel != nil {
@@ -123,7 +132,13 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   private func syncFrameIfNeeded() {
-    guard let panel, let shadeView, let screen = Self.screen(for: displayID) else { return }
+    guard !hasTornDown,
+      let panel,
+      let shadeView,
+      let screen = Self.screen(for: displayID)
+    else {
+      return
+    }
     let target = screen.frame
     guard panel.frame != target || panel.screen != screen else { return }
 
@@ -135,8 +150,16 @@ final class OverlayBrightnessBackend: BrightnessBackend {
   }
 
   private func applyBrightness(_ value: Double, animated: Bool) {
-    guard let shadeView, let panel else { return }
+    guard !hasTornDown, let shadeView, let panel else { return }
     let alpha = CGFloat(1 - min(max(value, 0), 1))
+
+    animationGeneration &+= 1
+    let generation = animationGeneration
+
+    if !animated {
+      // A direct manipulation or topology update supersedes any in-flight settle animation.
+      shadeView.layer?.removeAllAnimations()
+    }
 
     if !animated, abs(shadeView.alphaValue - alpha) < 0.0001 {
       if alpha > 0.001, !suppressOrderFront {
@@ -156,9 +179,17 @@ final class OverlayBrightnessBackend: BrightnessBackend {
         context.duration = Self.settleAnimationDuration
         context.timingFunction = CAMediaTimingFunction(name: .easeOut)
         shadeView.animator().alphaValue = alpha
-      } completionHandler: {
-        if alpha <= 0.001 {
-          panel.orderOut(nil)
+      } completionHandler: { [weak self] in
+        Task { @MainActor in
+          guard let self,
+            !self.hasTornDown,
+            generation == self.animationGeneration
+          else {
+            return
+          }
+          if self.currentBrightness >= 0.999 {
+            self.panel?.orderOut(nil)
+          }
         }
       }
     } else {
