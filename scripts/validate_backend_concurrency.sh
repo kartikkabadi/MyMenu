@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DDC="$ROOT/MyMonitor/Core/DDCBrightnessBackend.swift"
+GAMMA="$ROOT/MyMonitor/Core/GammaBrightnessBackend.swift"
 ROUTER="$ROOT/MyMonitor/Core/DisplayRouter.swift"
 ADAPTER="$ROOT/MyMonitor/Presentation/DisplayRouterAdapter.swift"
 POLICY="$ROOT/MyMonitor/Presentation/DisplayReconfigurationPolicy.swift"
@@ -20,6 +21,10 @@ if grep -n 'Arm64DDC' "$ROUTER"; then
   fail "DisplayRouter must not call the private DDC transport directly."
 fi
 
+if grep -n 'CGDisplayRestoreColorSyncSettings' "$GAMMA"; then
+  fail "Gamma probe and teardown must not globally reset unrelated displays."
+fi
+
 [[ -f "$POLICY" ]] \
   || fail "The hardware-free reconfiguration policy is missing."
 
@@ -27,6 +32,10 @@ grep -q 'MyMonitor.globalDDC' "$DDC" \
   || fail "DDC operations must stay on the single serialized worker queue."
 grep -q 'writeGeneration' "$DDC" \
   || fail "DDC writes must retain latest-value coalescing."
+grep -q 'activeOwnerByDisplay' "$GAMMA" \
+  || fail "Gamma replacement must retain per-display ownership."
+grep -q 'DisplayGamma.releaseHold(displayID: displayID)' "$GAMMA" \
+  || fail "Gamma teardown must restore only the affected display."
 grep -q 'reconfigurationGeneration' "$ROUTER" \
   || fail "Display reconfiguration must reject stale asynchronous probe results."
 grep -q 'isReconfiguring' "$ROUTER" \
