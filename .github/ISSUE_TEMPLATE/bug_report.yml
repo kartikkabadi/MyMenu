@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem with MyMenu
+description: Report a reproducible problem with MyMonitor
 title: "[Bug]: "
 labels:
   - bug
@@ -36,9 +36,9 @@ body:
     validations:
       required: false
   - type: textarea
-    id: permissions
+    id: control
     attributes:
-      label: Permissions and tier
-      description: State whether Accessibility or Screen Recording is enabled and which brightness tier is shown.
+      label: Control method and diagnostics
+      description: Include the active method shown by MyMonitor (Hardware, Software, or Display shade) and any relevant diagnostic summary.
     validations:
       required: false
