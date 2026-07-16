@@ -12,9 +12,12 @@ id() {
 PROJECT_ID=$(id project)
 TARGET_ID=$(id target)
 SOURCES_PHASE=$(id sources-phase)
+RESOURCES_PHASE=$(id resources-phase)
 FRAMEWORKS_PHASE=$(id frameworks-phase)
 CORE_DISPLAY_REF=$(id core-display-reference)
 CORE_DISPLAY_BUILD=$(id core-display-build)
+STRING_CATALOG_REF=$(id localizable-string-catalog-reference)
+STRING_CATALOG_BUILD=$(id localizable-string-catalog-build)
 PRODUCT_REF=$(id product-reference)
 CONFIG_LIST_PROJ=$(id project-configuration-list)
 CONFIG_LIST_TGT=$(id target-configuration-list)
@@ -43,9 +46,11 @@ for f in "${SWIFT_FILES[@]}"; do
   BUILD_FILES+="
 		$bid /* $(basename "$f") in Sources */ = {isa = PBXBuildFile; fileRef = $fid /* $(basename "$f") */; };"
   SOURCES_FILES+="
-				$bid /* $(basename "$f") in Sources */,"
+				$bid /* $(basename "$f") in Sources */,
+"
   GROUP_CHILDREN+="
-				$fid /* $(basename "$f") */,"
+				$fid /* $(basename "$f") */,
+"
 done
 
 cat > "$PROJ/project.pbxproj" <<EOF
@@ -60,6 +65,8 @@ $FILE_REFS
 		$PRODUCT_REF /* MyMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		$CORE_DISPLAY_REF /* CoreDisplay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreDisplay.framework; path = System/Library/Frameworks/CoreDisplay.framework; sourceTree = SDKROOT; };
 		$CORE_DISPLAY_BUILD /* CoreDisplay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = $CORE_DISPLAY_REF /* CoreDisplay.framework */; };
+		$STRING_CATALOG_REF /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Resources/Localizable.xcstrings; sourceTree = "<group>"; };
+		$STRING_CATALOG_BUILD /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = $STRING_CATALOG_REF /* Localizable.xcstrings */; };
 		INFO_PLIST /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ENTITLEMENTS /* MyMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyMonitor.entitlements; sourceTree = "<group>"; };
 		BRIDGING /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
@@ -69,6 +76,7 @@ $BUILD_FILES
 			buildConfigurationList = $CONFIG_LIST_TGT /* Build configuration list for PBXNativeTarget "MyMonitor" */;
 			buildPhases = (
 				$SOURCES_PHASE /* Sources */,
+				$RESOURCES_PHASE /* Resources */,
 				$FRAMEWORKS_PHASE /* Frameworks */,
 			);
 			buildRules = (
@@ -107,7 +115,14 @@ $BUILD_FILES
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-$SOURCES_FILES
+$SOURCES_FILES			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		$RESOURCES_PHASE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				$STRING_CATALOG_BUILD /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -231,8 +246,8 @@ $SOURCES_FILES
 			children = (
 				INFO_PLIST /* Info.plist */,
 				ENTITLEMENTS /* MyMonitor.entitlements */,
-$GROUP_CHILDREN
-			);
+				$STRING_CATALOG_REF /* Localizable.xcstrings */,
+$GROUP_CHILDREN			);
 			path = MyMonitor;
 			sourceTree = "<group>";
 		};

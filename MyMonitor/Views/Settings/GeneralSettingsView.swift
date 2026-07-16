@@ -14,17 +14,20 @@ struct GeneralSettingsView: View {
           )
         )
         .disabled(!launchAtLoginController.canChange)
+        .accessibilityIdentifier("general.launchAtLogin")
 
         if let statusMessage {
-          Text(statusMessage)
+          Label(statusMessage, systemImage: "info.circle")
             .font(.caption)
             .foregroundStyle(.secondary)
+            .accessibilityIdentifier("general.launchAtLoginStatus")
         }
 
         if let errorMessage = launchAtLoginController.errorMessage {
-          Text(errorMessage)
+          Label(errorMessage, systemImage: "exclamationmark.triangle")
             .font(.caption)
             .foregroundStyle(.red)
+            .accessibilityIdentifier("general.launchAtLoginError")
         }
       }
 
@@ -44,9 +47,11 @@ struct GeneralSettingsView: View {
   private var statusMessage: String? {
     switch launchAtLoginController.status {
     case .requiresApproval:
-      "Approval is required in System Settings › General › Login Items."
+      String(
+        localized: "Approval is required in System Settings › General › Login Items."
+      )
     case .unavailable:
-      "Launch at login is unavailable for this build."
+      String(localized: "Launch at login is unavailable for this build.")
     case .notRegistered, .enabled:
       nil
     }

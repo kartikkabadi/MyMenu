@@ -4,17 +4,23 @@ import SwiftUI
 
 struct ShortcutRecorderView: NSViewRepresentable {
   let shortcut: RecordedShortcut?
+  let accessibilityLabel: String
+  let accessibilityIdentifier: String
   let onChange: (RecordedShortcut?) -> Void
 
   func makeNSView(context: Context) -> ShortcutRecorderButton {
     let button = ShortcutRecorderButton()
     button.recordedShortcut = shortcut
+    button.recorderAccessibilityLabel = accessibilityLabel
+    button.setAccessibilityIdentifier(accessibilityIdentifier)
     button.onChange = onChange
     return button
   }
 
   func updateNSView(_ nsView: ShortcutRecorderButton, context: Context) {
     nsView.recordedShortcut = shortcut
+    nsView.recorderAccessibilityLabel = accessibilityLabel
+    nsView.setAccessibilityIdentifier(accessibilityIdentifier)
     nsView.onChange = onChange
   }
 }
@@ -24,6 +30,12 @@ final class ShortcutRecorderButton: NSButton {
     didSet {
       guard !isRecording else { return }
       updateTitle()
+    }
+  }
+
+  var recorderAccessibilityLabel = String(localized: "Keyboard shortcut") {
+    didSet {
+      setAccessibilityLabel(recorderAccessibilityLabel)
     }
   }
 
@@ -44,8 +56,13 @@ final class ShortcutRecorderButton: NSButton {
     target = self
     action = #selector(beginRecording)
     focusRingType = .default
-    toolTip = "Click, then type a keyboard shortcut. Press Delete to clear it."
-    setAccessibilityLabel("Keyboard shortcut")
+    toolTip = String(
+      localized: "Click, then type a keyboard shortcut. Press Delete to clear it."
+    )
+    setAccessibilityLabel(recorderAccessibilityLabel)
+    setAccessibilityHelp(
+      String(localized: "Click, then type a keyboard shortcut. Press Delete to clear it.")
+    )
     updateTitle()
   }
 
@@ -61,8 +78,8 @@ final class ShortcutRecorderButton: NSButton {
 
   @objc private func beginRecording() {
     isRecording = true
-    title = "Type Shortcut…"
-    setAccessibilityValue("Recording")
+    title = String(localized: "Type Shortcut…")
+    setAccessibilityValue(String(localized: "Recording"))
     window?.makeFirstResponder(self)
   }
 
@@ -89,7 +106,8 @@ final class ShortcutRecorderButton: NSButton {
     let modifiers = ShortcutModifiers(event.modifierFlags)
     guard !modifiers.isEmpty else {
       NSSound.beep()
-      title = "Add a Modifier"
+      title = String(localized: "Add a Modifier")
+      setAccessibilityValue(String(localized: "Add a modifier key"))
       return
     }
 
@@ -123,23 +141,25 @@ final class ShortcutRecorderButton: NSButton {
   }
 
   private func updateTitle() {
-    title = recordedShortcut?.displayText ?? "Record Shortcut"
-    setAccessibilityValue(recordedShortcut?.displayText ?? "Not set")
+    title = recordedShortcut?.displayText ?? String(localized: "Record Shortcut")
+    setAccessibilityValue(
+      recordedShortcut?.displayText ?? String(localized: "Not set")
+    )
   }
 
   private static func keyDisplay(for event: NSEvent) -> String {
     switch Int(event.keyCode) {
     case kVK_Return: "↩"
     case kVK_Tab: "⇥"
-    case kVK_Space: "Space"
+    case kVK_Space: String(localized: "Space")
     case kVK_LeftArrow: "←"
     case kVK_RightArrow: "→"
     case kVK_UpArrow: "↑"
     case kVK_DownArrow: "↓"
-    case kVK_Home: "Home"
-    case kVK_End: "End"
-    case kVK_PageUp: "Page Up"
-    case kVK_PageDown: "Page Down"
+    case kVK_Home: String(localized: "Home")
+    case kVK_End: String(localized: "End")
+    case kVK_PageUp: String(localized: "Page Up")
+    case kVK_PageDown: String(localized: "Page Down")
     case kVK_ANSI_KeypadEnter: "⌤"
     case kVK_F1: "F1"
     case kVK_F2: "F2"
