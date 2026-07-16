@@ -1,4 +1,4 @@
-name: Apply mode-routing fixes
+name: Finalize IORegistry matching
 
 on:
   pull_request:
@@ -24,10 +24,88 @@ jobs:
       - name: Select Xcode 26.3
         run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
-      - name: Apply guarded source fixes
+      - name: Apply guarded IORegistry fix
         run: |
-          python3 scripts/apply_mode_iokit_fix.py
-          rm scripts/apply_mode_iokit_fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+
+          arm64 = Path("MyMonitor/ThirdParty/Arm64DDC.swift")
+          text = arm64.read_text()
+          old = '''    var serviceLocation = 0
+              var ioregServicesForMatching: [IOregService] = []
+              let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(kIOMainPortDefault)
+              defer {
+                IOObjectRelease(ioregRoot)
+              }
+              var iterator = io_iterator_t()
+              defer {
+                IOObjectRelease(iterator)
+              }
+              var ioregService = IOregService()
+              guard IORegistryEntryCreateIterator(ioregRoot, "IOService", IOOptionBits(kIORegistryIterateRecursively), &iterator) == KERN_SUCCESS else {
+                return ioregServicesForMatching
+              }
+          '''
+          new = '''    var serviceLocation = 0
+              var ioregServicesForMatching: [IOregService] = []
+              let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(kIOMainPortDefault)
+              guard ioregRoot != IO_OBJECT_NULL else { return ioregServicesForMatching }
+              defer { IOObjectRelease(ioregRoot) }
+
+              var iterator = io_iterator_t()
+              guard IORegistryEntryCreateIterator(ioregRoot, "IOService", IOOptionBits(kIORegistryIterateRecursively), &iterator) == KERN_SUCCESS else {
+                return ioregServicesForMatching
+              }
+              defer { IOObjectRelease(iterator) }
+
+              var framebufferService = IOregService()
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError(f"root/iterator block: expected one match, found {text.count(old)}")
+          text = text.replace(old, new, 1)
+
+          old = '''      if keysFramebuffer.contains(objectOfInterest.name) {
+                ioregService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)
+                serviceLocation += 1
+                ioregService.serviceLocation = serviceLocation
+              } else if objectOfInterest.name == keyDCPAVServiceProxy {
+                self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &ioregService)
+                if ioregService.service != nil {
+                  ioregServicesForMatching.append(ioregService)
+                }
+                ioregService = IOregService()
+              }
+          '''
+          new = '''      if keysFramebuffer.contains(objectOfInterest.name) {
+                framebufferService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)
+                serviceLocation += 1
+                framebufferService.serviceLocation = serviceLocation
+              } else if objectOfInterest.name == keyDCPAVServiceProxy {
+                // A framebuffer may expose more than one proxy. Isolate proxy-specific state while
+                // retaining the framebuffer identity for every candidate.
+                var candidate = framebufferService
+                self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &candidate)
+                if candidate.service != nil {
+                  ioregServicesForMatching.append(candidate)
+                }
+              }
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError(f"proxy candidate block: expected one match, found {text.count(old)}")
+          arm64.write_text(text.replace(old, new, 1))
+
+          contract = Path("scripts/validate_backend_concurrency.sh")
+          text = contract.read_text()
+          old = '''grep -q 'ioregService = IOregService()' "$ARM64_DDC" \\
+            || fail "Proxy matching state must reset after each service candidate."
+          '''
+          new = '''grep -q 'var candidate = framebufferService' "$ARM64_DDC" \\
+            || fail "Each IOAV proxy must use isolated state while retaining framebuffer identity."
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError(f"contract candidate assertion: expected one match, found {text.count(old)}")
+          contract.write_text(text.replace(old, new, 1))
+          PY
 
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
@@ -60,9 +138,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            MyMonitor/Core/DisplayRouter.swift \
             MyMonitor/ThirdParty/Arm64DDC.swift \
+            scripts/validate_backend_concurrency.sh \
             MyMonitor.xcodeproj/project.pbxproj
-          git add -u scripts/apply_mode_iokit_fix.py
-          git commit -m "Fix display-mode routing and IORegistry extraction"
+          git commit -m "Preserve framebuffer identity across IOAV proxies"
           git push origin HEAD:${{ github.head_ref }}
