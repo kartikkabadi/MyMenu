@@ -47,15 +47,21 @@ final class DisplayRouter {
     reconfigure()
   }
 
-  /// One row per external display in extended mode; one row for a mirrored set.
+  /// One row per external display in extended mode; one representative for a full mirror.
   var presentationDisplays: [ExternalDisplayItem] {
-    guard displays.count > 1 else { return displays }
-
-    let mirrored = displays.filter { CGDisplayIsInMirrorSet($0.id) != 0 }
-    if mirrored.count == 1 {
-      return [mirrored[0]]
+    let mirroredIDs = Set(
+      displays.compactMap { item in
+        CGDisplayIsInMirrorSet(item.id) != 0 ? item.id : nil
+      }
+    )
+    let presentationIDs = DisplayReconfigurationPolicy.presentationIDs(
+      connected: displays.map(\.id),
+      mirrored: mirroredIDs,
+      isFullMirror: Self.isMirrorMode
+    )
+    return presentationIDs.compactMap { displayID in
+      displays.first { $0.id == displayID }
     }
-    return displays
   }
 
   /// Connected displays first, followed by remembered disconnected displays.
@@ -435,9 +441,7 @@ final class DisplayRouter {
     overlayTransitionEndWorkItem?.cancel()
     overlayTransitionEndWorkItem = nil
 
-    for displayID in gammaHoldDisplayIDs {
-      DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
-    }
+    DisplayGamma.releaseHolds(gammaHoldDisplayIDs, includeBuiltin: true)
     gammaHoldDisplayIDs.removeAll()
 
     for backend in backends.values {
@@ -459,8 +463,8 @@ final class DisplayRouter {
   }
 
   private func scheduleOverlaySpaceSync() {
-    beginOverlaySpaceTransition()
     overlayTransitionEndWorkItem?.cancel()
+    beginOverlaySpaceTransition()
 
     let endWork = DispatchWorkItem { [weak self] in
       self?.endOverlaySpaceTransition()
@@ -493,9 +497,7 @@ final class DisplayRouter {
   }
 
   private func endOverlaySpaceTransition() {
-    for displayID in gammaHoldDisplayIDs {
-      DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
-    }
+    DisplayGamma.releaseHolds(gammaHoldDisplayIDs, includeBuiltin: true)
     gammaHoldDisplayIDs.removeAll()
 
     for overlay in overlayBackends {
@@ -504,17 +506,13 @@ final class DisplayRouter {
   }
 
   private static var isMirrorMode: Bool {
-    NSScreen.screens.count == 1
+    guard NSScreen.screens.count == 1 else { return false }
+    return allOnlineDisplayIDs().contains { CGDisplayIsInMirrorSet($0) != 0 }
   }
 
   private static func mirroredOnlineDisplayIDs(for displayID: CGDirectDisplayID) -> [CGDirectDisplayID] {
-    let online = allOnlineDisplayIDs()
-    if isMirrorMode {
-      return online.isEmpty ? [displayID] : online
-    }
-
     guard CGDisplayIsInMirrorSet(displayID) != 0 else { return [displayID] }
-    let mirrored = online.filter { CGDisplayIsInMirrorSet($0) != 0 }
+    let mirrored = allOnlineDisplayIDs().filter { CGDisplayIsInMirrorSet($0) != 0 }
     return mirrored.isEmpty ? [displayID] : mirrored
   }
 
@@ -716,7 +714,9 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      Task { @MainActor in self?.scheduleReconfigure(force: true) }
+      // Wake invalidates any pre-sleep probe immediately; delaying generation advancement allows a
+      // stale service result to install during the debounce window.
+      Task { @MainActor in self?.reconfigure(force: true) }
     }
   }
 
@@ -736,6 +736,12 @@ final class DisplayRouter {
     reconfigureWorkItem?.cancel()
     reconfigureWorkItem = nil
     reconfigurationGeneration &+= 1
+
+    // A topology change can arrive during mirror/Space stabilization. End that transition before
+    // removing backends so built-in or peer-display gamma holds cannot outlive the old topology.
+    overlayTransitionEndWorkItem?.cancel()
+    overlayTransitionEndWorkItem = nil
+    endOverlaySpaceTransition()
 
     let externalIDs = Set(Self.onlineExternalDisplayIDs())
     removeDisconnectedBackends(keeping: externalIDs)
