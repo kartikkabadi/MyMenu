@@ -84,7 +84,7 @@ fileprivate final class DDCConnection: @unchecked Sendable {
   ) {
     let uniqueIDs = Array(Set(displayIDs)).sorted()
     guard Arm64DDC.isArm64, !uniqueIDs.isEmpty else {
-      DispatchQueue.main.async {
+      Task { @MainActor in
         completion([:])
       }
       return
@@ -142,7 +142,7 @@ fileprivate final class DDCConnection: @unchecked Sendable {
         )
       }
 
-      DispatchQueue.main.async {
+      Task { @MainActor in
         completion(results)
       }
     }
