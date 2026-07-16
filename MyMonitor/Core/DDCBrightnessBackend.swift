@@ -9,12 +9,13 @@ final class DDCBrightnessBackend: BrightnessBackend {
   static let tier: BrightnessTier = .ddc
 
   private static let globalDDCQueue = DispatchQueue(label: "MyMonitor.globalDDC")
-  private static let writeDebounceInterval: DispatchTimeInterval = .milliseconds(150)
+  private static let writeDebounceInterval: DispatchTimeInterval = .milliseconds(90)
 
   private let displayID: CGDirectDisplayID
   private var avService: IOAVService?
   private var maxDDCValue: UInt16 = 100
   private var lastWrittenDDC: UInt16?
+  private var hasReadRange = false
 
   private var pendingNormalized: Double?
   private var debounceWorkItem: DispatchWorkItem?
@@ -28,36 +29,27 @@ final class DDCBrightnessBackend: BrightnessBackend {
   }
 
   private func probeConnection() -> Bool {
-    guard Arm64DDC.isArm64 else {
-      return false
-    }
+    guard Arm64DDC.isArm64 else { return false }
     resolveServiceIfNeeded()
-    guard let service = avService else {
-      return false
-    }
+    guard let service = avService else { return false }
+
     var success = false
     Self.globalDDCQueue.sync {
-      guard let values = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else {
-        return
-      }
+      guard let values = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else { return }
       maxDDCValue = max(values.max, 1)
-      let testValue = values.current
-      guard Arm64DDC.write(service: service, command: ddcLuminanceVCP, value: testValue) else {
-        return
-      }
-      guard let reread = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else {
-        return
-      }
-      success = abs(Int(reread.current) - Int(testValue)) <= 2
+      let currentValue = values.current
+      guard Arm64DDC.write(service: service, command: ddcLuminanceVCP, value: currentValue) else { return }
+      guard let reread = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else { return }
+      success = abs(Int(reread.current) - Int(currentValue)) <= 2
     }
     return success
   }
 
   func setBrightness(_ value: Double, animated: Bool) {
     _ = animated
-    let clamped = min(max(value, 0), 1)
-    pendingNormalized = clamped
+    pendingNormalized = min(max(value, 0), 1)
     debounceWorkItem?.cancel()
+
     let work = DispatchWorkItem { [weak self] in
       self?.flushPendingWrite()
     }
@@ -71,6 +63,7 @@ final class DDCBrightnessBackend: BrightnessBackend {
     pendingNormalized = nil
     avService = nil
     lastWrittenDDC = nil
+    hasReadRange = false
   }
 
   // MARK: - Private
@@ -88,14 +81,27 @@ final class DDCBrightnessBackend: BrightnessBackend {
     avService = service
   }
 
+  private func readRangeIfNeeded(service: IOAVService) {
+    guard !hasReadRange else { return }
+    hasReadRange = true
+
+    Self.globalDDCQueue.sync {
+      guard let values = Arm64DDC.read(service: service, command: ddcLuminanceVCP) else { return }
+      maxDDCValue = max(values.max, 1)
+      lastWrittenDDC = values.current
+    }
+  }
+
   private func flushPendingWrite() {
     guard let normalized = pendingNormalized else { return }
     pendingNormalized = nil
     resolveServiceIfNeeded()
     guard let service = avService else { return }
 
-    // UI: 0 = full bright, 1 = max dim → hardware luminance is inverted.
-    let ddcValue = UInt16(round((1.0 - normalized) * Double(maxDDCValue)))
+    readRangeIfNeeded(service: service)
+
+    // User-facing brightness is direct: 0 = darkest, 1 = brightest.
+    let ddcValue = UInt16(round(normalized * Double(maxDDCValue)))
     guard ddcValue != lastWrittenDDC else { return }
 
     Self.globalDDCQueue.async { [weak self, service] in
