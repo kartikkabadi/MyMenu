@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private let launchAtLoginController: LaunchAtLoginController
   private let keyboardShortcutController: KeyboardShortcutController
   private let keyboardBrightnessCoordinator: KeyboardBrightnessCoordinator
+  private let settingsNavigationModel: SettingsNavigationModel
+  private let diagnosticsController: DiagnosticsController
   private var statusItem: NSStatusItem!
   private var popoverController: PopoverWindowController!
   private var settingsController: SettingsWindowController!
@@ -18,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let router = DisplayRouter()
     let controller = DisplayRouterAdapter(router: router)
     let presentationStore = DisplayPresentationStore(controller: controller)
+    let configurationStore = DisplayConfigurationStore(controller: controller)
     let keyboardShortcutController = KeyboardShortcutController(
       service: CarbonGlobalHotKeyService(),
       persistence: SystemKeyboardShortcutPreferences()
@@ -27,12 +30,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     self.presentationStore = presentationStore
-    configurationStore = DisplayConfigurationStore(controller: controller)
+    self.configurationStore = configurationStore
     launchAtLoginController = LaunchAtLoginController(
       service: SystemLaunchAtLoginService()
     )
     self.keyboardShortcutController = keyboardShortcutController
     self.keyboardBrightnessCoordinator = keyboardBrightnessCoordinator
+    settingsNavigationModel = SettingsNavigationModel()
+    diagnosticsController = DiagnosticsController(
+      presentationStore: presentationStore,
+      configurationStore: configurationStore
+    )
     super.init()
 
     keyboardShortcutController.actionHandler = { [weak keyboardBrightnessCoordinator] action, target in
@@ -47,7 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       store: presentationStore,
       configurationStore: configurationStore,
       launchAtLoginController: launchAtLoginController,
-      keyboardShortcutController: keyboardShortcutController
+      keyboardShortcutController: keyboardShortcutController,
+      navigationModel: settingsNavigationModel,
+      diagnosticsController: diagnosticsController
     )
 
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -74,6 +84,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   func showSettings() {
     popoverController.close()
     settingsController.show()
+  }
+
+  func showDiagnostics(for monitorID: MonitorID? = nil) {
+    popoverController.close()
+    diagnosticsController.focus(on: monitorID)
+    settingsController.show(destination: .advanced)
   }
 
   func quitApp() {
