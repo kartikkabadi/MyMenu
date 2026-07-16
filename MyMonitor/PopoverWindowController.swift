@@ -4,16 +4,16 @@ import SwiftUI
 /// Owns one transient native popover anchored to the menu-bar status item.
 @MainActor
 final class PopoverWindowController: NSObject {
-  let router: DisplayRouter
+  let store: DisplayPresentationStore
 
   private let popover: NSPopover
   private let contentViewController: NSHostingController<BrightnessPopoverView>
 
-  init(router: DisplayRouter) {
-    self.router = router
+  init(store: DisplayPresentationStore) {
+    self.store = store
     self.popover = NSPopover()
     self.contentViewController = NSHostingController(
-      rootView: BrightnessPopoverView(router: router)
+      rootView: BrightnessPopoverView(store: store)
     )
     super.init()
 
@@ -32,7 +32,7 @@ final class PopoverWindowController: NSObject {
       return
     }
 
-    router.reconfigure()
+    store.refresh()
     popover.show(
       relativeTo: button.bounds,
       of: button,
