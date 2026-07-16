@@ -47,6 +47,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     keyboardShortcutController.actionHandler = { [weak keyboardBrightnessCoordinator] action, target in
       keyboardBrightnessCoordinator?.perform(action, target: target)
     }
+    configurationStore.onConfigurationForgotten = { [weak keyboardShortcutController] monitorID in
+      keyboardShortcutController?.forgetDisplayTarget(monitorID)
+    }
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
