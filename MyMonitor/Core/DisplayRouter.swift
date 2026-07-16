@@ -26,11 +26,13 @@ struct ExternalDisplayItem: Identifiable, Equatable {
 @Observable
 final class DisplayRouter {
   private(set) var displays: [ExternalDisplayItem] = []
+  private(set) var isReconfiguring = false
 
   private var backends: [CGDirectDisplayID: any BrightnessBackend] = [:]
   private var reconfigureWorkItem: DispatchWorkItem?
   private var overlayTransitionEndWorkItem: DispatchWorkItem?
   private var gammaHoldDisplayIDs: Set<CGDirectDisplayID> = []
+  private var reconfigurationGeneration: UInt64 = 0
   private let defaults = UserDefaults.standard
 
   private static let overlayTransitionDuration: TimeInterval = 0.9
@@ -38,11 +40,11 @@ final class DisplayRouter {
   private static let knownDisplayIDsKey = "MyMonitor.v2.knownDisplayIDs"
 
   init() {
-    reconfigure()
     registerDisplayCallbacks()
     registerScreenObservers()
     registerWakeObserver()
     registerTerminateObserver()
+    reconfigure()
   }
 
   /// One row per external display in extended mode; one row for a mirrored set.
@@ -154,7 +156,8 @@ final class DisplayRouter {
         ?? "External Display"
     )
 
-    guard displays.contains(where: { $0.id == displayID }) else { return }
+    guard let index = displays.firstIndex(where: { $0.id == displayID }) else { return }
+    displays[index].controlPreference = preference
     reconfigure(force: true)
   }
 
@@ -177,13 +180,15 @@ final class DisplayRouter {
     displays[index].controlPreference = .automatic
   }
 
-  /// Re-probe only when the set of connected external displays changes unless a user explicitly
-  /// changes the preferred control method.
+  /// Re-probe only when the connected set changes unless a user explicitly requests a retry or
+  /// changes the preferred control method. Existing controls remain alive while slow DDC work
+  /// completes, and the final backend set is swapped atomically on the main actor.
   func reconfigure(force: Bool = false) {
     let externalIDs = Set(Self.onlineExternalDisplayIDs())
 
     guard !externalIDs.isEmpty else {
-      teardownAll()
+      invalidatePendingReconfiguration()
+      teardownInstalledBackends()
       displays = []
       return
     }
@@ -194,54 +199,234 @@ final class DisplayRouter {
       return
     }
 
-    teardownAll()
+    reconfigurationGeneration &+= 1
+    let generation = reconfigurationGeneration
+    isReconfiguring = true
 
-    if Arm64DDC.isArm64 {
-      _ = Arm64DDC.getServiceMatches(displayIDs: externalIDs.sorted())
-    }
+    removeDisconnectedBackends(keeping: externalIDs)
 
-    var items: [ExternalDisplayItem] = []
-    for displayID in externalIDs.sorted() {
-      let preference = loadControlPreference(displayID: displayID)
-      let tier = Self.resolveTier(for: displayID, preference: preference)
-      let allowedRange = loadBrightnessRange(displayID: displayID)
-      let brightness = min(
-        max(
-          loadBrightness(displayID: displayID)
-            ?? Self.currentBrightness(displayID: displayID, tier: tier)
-            ?? 1,
-          allowedRange.lowerBound
-        ),
-        allowedRange.upperBound
-      )
-      let backend = Self.makeBackend(
+    let inputs = externalIDs.sorted().map { displayID in
+      ReconfigurationInput(
         displayID: displayID,
-        tier: tier,
-        brightness: brightness
+        name: Self.displayName(displayID),
+        preference: loadControlPreference(displayID: displayID),
+        allowedRange: loadBrightnessRange(displayID: displayID),
+        savedBrightness: loadBrightness(displayID: displayID),
+        currentBrightness: displays.first(where: { $0.id == displayID })?.brightness,
+        forceOverlay: Self.shouldUseOverlayForMirror(displayID: displayID)
       )
-      let name = Self.displayName(displayID)
-
-      backends[displayID] = backend
-      items.append(
-        ExternalDisplayItem(
-          id: displayID,
-          name: name,
-          brightness: brightness,
-          tier: tier,
-          allowedRange: allowedRange,
-          controlPreference: preference
-        )
-      )
-      rememberDisplay(displayID, name: name)
-      persistTier(tier, displayID: displayID)
     }
 
-    displays = items.sorted {
-      $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+    let ddcCandidateIDs = inputs.compactMap { input -> CGDirectDisplayID? in
+      guard !input.forceOverlay, input.preference != .shade else { return nil }
+      return input.displayID
+    }
+
+    DDCBrightnessBackend.probe(displayIDs: ddcCandidateIDs) { [weak self] results in
+      guard let self else {
+        Self.invalidate(results)
+        return
+      }
+      self.applyReconfiguration(
+        inputs: inputs,
+        ddcResults: results,
+        generation: generation
+      )
     }
   }
 
   func teardownAll() {
+    invalidatePendingReconfiguration()
+    teardownInstalledBackends()
+  }
+
+  // MARK: - Reconfiguration
+
+  private struct ReconfigurationInput {
+    let displayID: CGDirectDisplayID
+    let name: String
+    let preference: BrightnessControlPreference
+    let allowedRange: ClosedRange<Double>
+    let savedBrightness: Double?
+    let currentBrightness: Double?
+    let forceOverlay: Bool
+  }
+
+  private func applyReconfiguration(
+    inputs: [ReconfigurationInput],
+    ddcResults: [CGDirectDisplayID: DDCProbeResult],
+    generation: UInt64
+  ) {
+    guard generation == reconfigurationGeneration else {
+      Self.invalidate(ddcResults)
+      return
+    }
+
+    let expectedIDs = Set(inputs.map(\.displayID))
+    guard expectedIDs == Set(Self.onlineExternalDisplayIDs()) else {
+      Self.invalidate(ddcResults)
+      reconfigure(force: true)
+      return
+    }
+
+    var nextBackends: [CGDirectDisplayID: any BrightnessBackend] = [:]
+    var nextDisplays: [ExternalDisplayItem] = []
+    nextBackends.reserveCapacity(inputs.count)
+    nextDisplays.reserveCapacity(inputs.count)
+
+    for input in inputs {
+      let ddcResult = ddcResults[input.displayID]
+      let gammaAvailable = gammaCapability(
+        for: input.displayID,
+        preference: input.preference,
+        hasDDC: ddcResult != nil,
+        forceOverlay: input.forceOverlay
+      )
+      let tier = Self.resolveTier(
+        preference: input.preference,
+        forceOverlay: input.forceOverlay,
+        hasDDC: ddcResult != nil,
+        hasGamma: gammaAvailable
+      )
+
+      if tier != .ddc {
+        ddcResult?.invalidate()
+      }
+
+      let brightness = min(
+        max(
+          input.savedBrightness
+            ?? input.currentBrightness
+            ?? (tier == .ddc ? ddcResult?.currentBrightness : nil)
+            ?? 1,
+          input.allowedRange.lowerBound
+        ),
+        input.allowedRange.upperBound
+      )
+
+      let backend = Self.makeBackend(
+        displayID: input.displayID,
+        tier: tier,
+        brightness: brightness,
+        ddcResult: ddcResult
+      )
+      nextBackends[input.displayID] = backend
+      nextDisplays.append(
+        ExternalDisplayItem(
+          id: input.displayID,
+          name: input.name,
+          brightness: brightness,
+          tier: tier,
+          allowedRange: input.allowedRange,
+          controlPreference: input.preference
+        )
+      )
+      rememberDisplay(input.displayID, name: input.name)
+      persistTier(tier, displayID: input.displayID)
+    }
+
+    teardownInstalledBackends()
+    backends = nextBackends
+    displays = nextDisplays.sorted {
+      $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+    }
+    isReconfiguring = false
+  }
+
+  private func gammaCapability(
+    for displayID: CGDirectDisplayID,
+    preference: BrightnessControlPreference,
+    hasDDC: Bool,
+    forceOverlay: Bool
+  ) -> Bool {
+    guard !forceOverlay, preference != .shade else { return false }
+
+    switch preference {
+    case .automatic, .hardware:
+      if hasDDC { return false }
+    case .software:
+      break
+    case .shade:
+      return false
+    }
+
+    if backends[displayID] is GammaBrightnessBackend {
+      return true
+    }
+    return GammaBrightnessBackend.probe(displayID: displayID)
+  }
+
+  private static func resolveTier(
+    preference: BrightnessControlPreference,
+    forceOverlay: Bool,
+    hasDDC: Bool,
+    hasGamma: Bool
+  ) -> BrightnessTier {
+    if forceOverlay { return .overlay }
+
+    switch preference {
+    case .automatic, .hardware:
+      if hasDDC { return .ddc }
+      if hasGamma { return .gamma }
+      return .overlay
+
+    case .software:
+      if hasGamma { return .gamma }
+      if hasDDC { return .ddc }
+      return .overlay
+
+    case .shade:
+      return .overlay
+    }
+  }
+
+  private static func makeBackend(
+    displayID: CGDirectDisplayID,
+    tier: BrightnessTier,
+    brightness: Double,
+    ddcResult: DDCProbeResult?
+  ) -> any BrightnessBackend {
+    let backend: any BrightnessBackend
+    switch tier {
+    case .ddc:
+      if let ddcResult {
+        backend = DDCBrightnessBackend(probeResult: ddcResult)
+      } else {
+        backend = DDCBrightnessBackend(displayID: displayID)
+      }
+    case .gamma:
+      backend = GammaBrightnessBackend(displayID: displayID)
+    case .overlay:
+      backend = OverlayBrightnessBackend(displayID: displayID)
+    }
+    backend.setBrightness(brightness, animated: false)
+    return backend
+  }
+
+  private func removeDisconnectedBackends(
+    keeping externalIDs: Set<CGDirectDisplayID>
+  ) {
+    let removedIDs = Set(backends.keys).subtracting(externalIDs)
+    for displayID in removedIDs {
+      backends.removeValue(forKey: displayID)?.teardown()
+    }
+    displays.removeAll { !externalIDs.contains($0.id) }
+  }
+
+  private func invalidatePendingReconfiguration() {
+    reconfigurationGeneration &+= 1
+    isReconfiguring = false
+  }
+
+  private static func invalidate(
+    _ results: [CGDirectDisplayID: DDCProbeResult]
+  ) {
+    for result in results.values {
+      result.invalidate()
+    }
+  }
+
+  private func teardownInstalledBackends() {
     overlayTransitionEndWorkItem?.cancel()
     overlayTransitionEndWorkItem = nil
 
@@ -326,77 +511,6 @@ final class DisplayRouter {
     guard CGDisplayIsInMirrorSet(displayID) != 0 else { return [displayID] }
     let mirrored = online.filter { CGDisplayIsInMirrorSet($0) != 0 }
     return mirrored.isEmpty ? [displayID] : mirrored
-  }
-
-  // MARK: - Tier cascade
-
-  private static func resolveTier(
-    for displayID: CGDirectDisplayID,
-    preference: BrightnessControlPreference
-  ) -> BrightnessTier {
-    if shouldUseOverlayForMirror(displayID: displayID) {
-      return .overlay
-    }
-
-    switch preference {
-    case .automatic:
-      return resolveAutomaticTier(for: displayID)
-
-    case .hardware:
-      if DDCBrightnessBackend.probe(displayID: displayID) {
-        return .ddc
-      }
-      return resolveAutomaticTier(for: displayID, skipDDC: true)
-
-    case .software:
-      if GammaBrightnessBackend.probe(displayID: displayID) {
-        return .gamma
-      }
-      return resolveAutomaticTier(for: displayID, skipGamma: true)
-
-    case .shade:
-      return .overlay
-    }
-  }
-
-  private static func resolveAutomaticTier(
-    for displayID: CGDirectDisplayID,
-    skipDDC: Bool = false,
-    skipGamma: Bool = false
-  ) -> BrightnessTier {
-    if !skipDDC, DDCBrightnessBackend.probe(displayID: displayID) {
-      return .ddc
-    }
-    if !skipGamma, GammaBrightnessBackend.probe(displayID: displayID) {
-      return .gamma
-    }
-    return .overlay
-  }
-
-  private static func currentBrightness(
-    displayID: CGDirectDisplayID,
-    tier: BrightnessTier
-  ) -> Double? {
-    guard tier == .ddc else { return nil }
-    return DDCBrightnessBackend.currentBrightness(displayID: displayID)
-  }
-
-  private static func makeBackend(
-    displayID: CGDirectDisplayID,
-    tier: BrightnessTier,
-    brightness: Double
-  ) -> any BrightnessBackend {
-    let backend: any BrightnessBackend
-    switch tier {
-    case .ddc:
-      backend = DDCBrightnessBackend(displayID: displayID)
-    case .gamma:
-      backend = GammaBrightnessBackend(displayID: displayID)
-    case .overlay:
-      backend = OverlayBrightnessBackend(displayID: displayID)
-    }
-    backend.setBrightness(brightness, animated: false)
-    return backend
   }
 
   private static func shouldUseOverlayForMirror(displayID: CGDirectDisplayID) -> Bool {
@@ -597,7 +711,7 @@ final class DisplayRouter {
       object: nil,
       queue: .main
     ) { [weak self] _ in
-      Task { @MainActor in self?.scheduleReconfigure() }
+      Task { @MainActor in self?.scheduleReconfigure(force: true) }
     }
   }
 
@@ -611,10 +725,10 @@ final class DisplayRouter {
     }
   }
 
-  private func scheduleReconfigure() {
+  private func scheduleReconfigure(force: Bool = false) {
     reconfigureWorkItem?.cancel()
     let work = DispatchWorkItem { [weak self] in
-      Task { @MainActor in self?.reconfigure() }
+      Task { @MainActor in self?.reconfigure(force: force) }
     }
     reconfigureWorkItem = work
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
