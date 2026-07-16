@@ -1,0 +1,47 @@
+name: Prepare clean PR20 landing
+
+on:
+  push:
+    branches:
+      - backend/f15-async-display-control
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-pr20-landing
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: backend/f15-async-display-control
+          fetch-depth: 0
+
+      - name: Remove inherited launch and unsafe distribution surface
+        run: |
+          git rm -r --ignore-unmatch \
+            installer \
+            video \
+            website
+          git rm --ignore-unmatch \
+            worker.js \
+            wrangler.jsonc \
+            scripts/deploy-site.sh \
+            scripts/package-local.sh \
+            scripts/reset-permissions.sh \
+            .github/workflows/cleanup_pr20.yml
+
+      - name: Commit monitor-only landing cleanup
+        run: |
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove inherited launch and unsafe distribution artifacts"
+          git push origin HEAD:backend/f15-async-display-control
