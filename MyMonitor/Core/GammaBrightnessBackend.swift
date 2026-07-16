@@ -14,14 +14,13 @@ final class GammaBrightnessBackend: BrightnessBackend {
 
   private let displayID: CGDirectDisplayID
   private let ownerID = UUID()
-  private var currentBrightness: Double = 0
+  private var currentBrightness: Double?
   private var tornDown = false
 
   init(displayID: CGDirectDisplayID) {
     self.displayID = displayID
     guard Self.isExternal(displayID) else { return }
     Self.activeOwnerByDisplay[displayID] = ownerID
-    DisplayGamma.applyBrightnessHold(1.0, displayID: displayID)
   }
 
   static func probe(displayID: CGDirectDisplayID) -> Bool {
@@ -69,7 +68,7 @@ final class GammaBrightnessBackend: BrightnessBackend {
     else {
       return
     }
-    guard clamped != currentBrightness else { return }
+    guard currentBrightness != clamped else { return }
     _ = animated
     currentBrightness = clamped
     DisplayGamma.applyBrightnessHold(clamped, displayID: displayID)
@@ -86,7 +85,6 @@ final class GammaBrightnessBackend: BrightnessBackend {
 
     Self.activeOwnerByDisplay.removeValue(forKey: displayID)
     DisplayGamma.releaseHold(displayID: displayID)
-    DisplayGamma.restoreColorSyncAndReapplyHolds()
   }
 
   private static func isExternal(_ displayID: CGDirectDisplayID) -> Bool {
