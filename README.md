@@ -14,6 +14,12 @@ It has one job: detect connected monitors, choose the best available control met
 
 MyMonitor does not include window management, an Alt-Tab replacement, accounts, analytics, cloud storage, or network services.
 
+## Frontend specification
+
+The canonical native macOS frontend contract lives in [`docs/frontend/`](docs/frontend/README.md). It includes the research basis, full popover and Settings interaction specification, native component/design rules, binding decisions, sequential implementation tickets, and objective QA matrix.
+
+Frontend work must follow that contract one ticket at a time. It must use real macOS components and system behavior rather than custom glass cards, fixed visual styling, or placeholder features.
+
 ## Requirements
 
 - macOS **26.0 or later**
