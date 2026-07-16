@@ -1,35 +1,35 @@
 import Foundation
 
-struct ContinuityToken: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: UUID
+public struct ContinuityID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: UUID
 
-  init(rawValue: UUID = UUID()) {
+  public init(rawValue: UUID = UUID()) {
     self.rawValue = rawValue
   }
 }
 
-struct ContinuityEpoch: RawRepresentable, Hashable, Comparable, Codable, Sendable {
-  let rawValue: UInt64
+public struct ContinuityEpoch: RawRepresentable, Hashable, Comparable, Codable, Sendable {
+  public let rawValue: UInt64
 
-  init(rawValue: UInt64) {
+  public init(rawValue: UInt64) {
     self.rawValue = rawValue
   }
 
-  static let zero = ContinuityEpoch(rawValue: 0)
+  public static let zero = ContinuityEpoch(rawValue: 0)
 
-  static func < (lhs: ContinuityEpoch, rhs: ContinuityEpoch) -> Bool {
+  public static func < (lhs: ContinuityEpoch, rhs: ContinuityEpoch) -> Bool {
     lhs.rawValue < rhs.rawValue
   }
 
-  func next() -> ContinuityEpoch {
+  public func next() -> ContinuityEpoch {
     ContinuityEpoch(rawValue: rawValue &+ 1)
   }
 }
 
-struct TopologySignature: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: String
+public struct TopologySignature: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: String
 
-  init(rawValue: String) {
+  public init(rawValue: String) {
     self.rawValue = rawValue
   }
 }
