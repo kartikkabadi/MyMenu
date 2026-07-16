@@ -7,11 +7,19 @@ protocol TerminalResourceReleasing: AnyObject {
 
 @MainActor
 final class SynchronousTerminalBoundary {
+  private final class WeakReleasedResource {
+    weak var value: (any TerminalResourceReleasing)?
+
+    init(_ value: any TerminalResourceReleasing) {
+      self.value = value
+    }
+  }
+
   private(set) var isTerminated = false
   private(set) var generation = EngineGeneration.zero
   private var resources: [any TerminalResourceReleasing] = []
   private var registeredResourceIDs: Set<ObjectIdentifier> = []
-  private var releasedResourceIDs: Set<ObjectIdentifier> = []
+  private var releasedResources: [WeakReleasedResource] = []
 
   @discardableResult
   func beginGeneration() -> EngineGeneration {
@@ -21,15 +29,13 @@ final class SynchronousTerminalBoundary {
   }
 
   func register(_ resource: any TerminalResourceReleasing) {
-    let id = ObjectIdentifier(resource)
-    guard !releasedResourceIDs.contains(id) else { return }
-    guard registeredResourceIDs.insert(id).inserted else { return }
-
     if isTerminated {
-      releasedResourceIDs.insert(id)
-      resource.releaseTerminalResources()
+      releaseOnce(resource)
       return
     }
+
+    let id = ObjectIdentifier(resource)
+    guard registeredResourceIDs.insert(id).inserted else { return }
     resources.append(resource)
   }
 
@@ -43,11 +49,17 @@ final class SynchronousTerminalBoundary {
     generation = generation.next()
 
     for resource in resources.reversed() {
-      let id = ObjectIdentifier(resource)
-      guard releasedResourceIDs.insert(id).inserted else { continue }
-      resource.releaseTerminalResources()
+      releaseOnce(resource)
     }
     resources.removeAll(keepingCapacity: false)
     registeredResourceIDs.removeAll(keepingCapacity: false)
+  }
+
+  private func releaseOnce(_ resource: any TerminalResourceReleasing) {
+    releasedResources.removeAll { $0.value == nil }
+    guard !releasedResources.contains(where: { $0.value === resource }) else { return }
+
+    releasedResources.append(WeakReleasedResource(resource))
+    resource.releaseTerminalResources()
   }
 }
