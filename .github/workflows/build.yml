@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   build:
-    name: Tests and Xcode 26 build
+    name: Tests, frontend contract, and Xcode 26 builds
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
@@ -29,6 +29,9 @@ jobs:
       - name: Test presentation layer
         run: swift test
 
+      - name: Validate frontend contract
+        run: bash scripts/validate_frontend_contract.sh
+
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
 
@@ -39,7 +42,20 @@ jobs:
             -scheme MyMonitor \
             -configuration Debug \
             -sdk macosx \
-            -derivedDataPath build/DerivedData \
+            -derivedDataPath build/DerivedData-Debug \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build Release
+        run: |
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Release \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Release \
             ARCHS=arm64 \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
