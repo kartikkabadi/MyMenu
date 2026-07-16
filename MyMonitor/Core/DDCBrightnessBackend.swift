@@ -82,7 +82,8 @@ fileprivate final class DDCConnection: @unchecked Sendable {
     displayIDs: [CGDirectDisplayID],
     completion: @escaping @MainActor ([CGDirectDisplayID: DDCProbeResult]) -> Void
   ) {
-    let uniqueIDs = Array(Set(displayIDs)).sorted()
+    let requestedIDs = Set(displayIDs)
+    let uniqueIDs = requestedIDs.sorted()
     guard Arm64DDC.isArm64, !uniqueIDs.isEmpty else {
       Task { @MainActor in
         completion([:])
@@ -96,7 +97,8 @@ fileprivate final class DDCConnection: @unchecked Sendable {
       results.reserveCapacity(matches.count)
 
       for match in matches {
-        guard !match.discouraged,
+        guard requestedIDs.contains(match.displayID),
+          !match.discouraged,
           !match.dummy,
           let service = match.service,
           let values = Arm64DDC.read(
@@ -107,8 +109,8 @@ fileprivate final class DDCConnection: @unchecked Sendable {
           continue
         }
 
-        let maximum = max(values.max, 1)
-        let current = min(values.current, maximum)
+        let initialMaximum = max(values.max, 1)
+        let current = min(values.current, initialMaximum)
 
         // Writing the exact current value validates the write path without changing luminance.
         guard Arm64DDC.write(
@@ -125,14 +127,16 @@ fileprivate final class DDCConnection: @unchecked Sendable {
           continue
         }
 
+        let confirmedMaximum = max(reread.max, 1)
+        let confirmedCurrent = min(reread.current, confirmedMaximum)
         let connection = DDCConnection(
           displayID: match.displayID,
           service: service,
-          maximum: maximum,
-          current: reread.current
+          maximum: confirmedMaximum,
+          current: confirmedCurrent
         )
         let normalized = min(
-          max(Double(reread.current) / Double(maximum), 0),
+          max(Double(confirmedCurrent) / Double(confirmedMaximum), 0),
           1
         )
         results[match.displayID] = DDCProbeResult(
@@ -185,8 +189,12 @@ fileprivate final class DDCConnection: @unchecked Sendable {
     guard !invalidated, let normalized = pendingNormalized else { return }
     pendingNormalized = nil
 
-    guard resolveServiceIfNeeded(), let service else { return }
-    readRangeIfNeeded(service: service)
+    guard resolveServiceIfNeeded(),
+      let service,
+      readRangeIfNeeded(service: service)
+    else {
+      return
+    }
 
     let ddcValue = UInt16(round(normalized * Double(maximum)))
     guard ddcValue != lastWritten else { return }
@@ -197,6 +205,11 @@ fileprivate final class DDCConnection: @unchecked Sendable {
       value: ddcValue
     ) {
       lastWritten = ddcValue
+    } else {
+      // IOAV service handles can become stale after wake or transient topology changes. Do not pin
+      // a failed handle forever; the next user request will rematch and re-read the range.
+      self.service = nil
+      lastWritten = nil
     }
   }
 
@@ -216,16 +229,18 @@ fileprivate final class DDCConnection: @unchecked Sendable {
     return true
   }
 
-  private func readRangeIfNeeded(service: IOAVService) {
-    guard lastWritten == nil else { return }
+  private func readRangeIfNeeded(service: IOAVService) -> Bool {
+    guard lastWritten == nil else { return true }
     guard let values = Arm64DDC.read(
       service: service,
       command: ddcLuminanceVCP
     ) else {
-      return
+      self.service = nil
+      return false
     }
 
     maximum = max(values.max, 1)
-    lastWritten = values.current
+    lastWritten = min(values.current, maximum)
+    return true
   }
 }
