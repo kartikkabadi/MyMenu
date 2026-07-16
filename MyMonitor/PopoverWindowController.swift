@@ -1,4 +1,5 @@
 import AppKit
+import os
 import SwiftUI
 
 /// Owns one transient native popover anchored to the menu-bar status item.
@@ -8,6 +9,11 @@ final class PopoverWindowController: NSObject {
 
   private let popover: NSPopover
   private let contentViewController: PopoverHostingController<BrightnessPopoverView>
+  private let performanceLog = OSLog(
+    subsystem: "com.mymonitor.MyMonitor",
+    category: "Frontend"
+  )
+  private var presentationSignpostID: OSSignpostID?
 
   init(store: DisplayPresentationStore) {
     self.store = store
@@ -20,6 +26,9 @@ final class PopoverWindowController: NSObject {
     contentViewController.sizingOptions = [.preferredContentSize]
     contentViewController.onPreferredContentSizeChange = { [weak self] size in
       self?.applyContentSize(size)
+    }
+    contentViewController.onViewDidAppear = { [weak self] in
+      self?.finishPresentationSignpost(result: "visible")
     }
 
     popover.behavior = .transient
@@ -34,6 +43,7 @@ final class PopoverWindowController: NSObject {
       return
     }
 
+    beginPresentationSignpost()
     prepareContentSize()
     popover.show(
       relativeTo: button.bounds,
@@ -44,6 +54,9 @@ final class PopoverWindowController: NSObject {
   }
 
   func close() {
+    if presentationSignpostID != nil {
+      finishPresentationSignpost(result: "cancelled")
+    }
     popover.performClose(nil)
   }
 
@@ -74,16 +87,50 @@ final class PopoverWindowController: NSObject {
 
     popover.contentSize = nextSize
   }
+
+  private func beginPresentationSignpost() {
+    if presentationSignpostID != nil {
+      finishPresentationSignpost(result: "superseded")
+    }
+
+    let signpostID = OSSignpostID(log: performanceLog)
+    presentationSignpostID = signpostID
+    os_signpost(
+      .begin,
+      log: performanceLog,
+      name: "Popover Presentation",
+      signpostID: signpostID
+    )
+  }
+
+  private func finishPresentationSignpost(result: StaticString) {
+    guard let signpostID = presentationSignpostID else { return }
+    os_signpost(
+      .end,
+      log: performanceLog,
+      name: "Popover Presentation",
+      signpostID: signpostID,
+      "result=%{public}s",
+      String(describing: result)
+    )
+    presentationSignpostID = nil
+  }
 }
 
 @MainActor
 private final class PopoverHostingController<Content: View>: NSHostingController<Content> {
   var onPreferredContentSizeChange: ((NSSize) -> Void)?
+  var onViewDidAppear: (() -> Void)?
 
   override var preferredContentSize: NSSize {
     didSet {
       guard oldValue != preferredContentSize else { return }
       onPreferredContentSizeChange?(preferredContentSize)
     }
+  }
+
+  override func viewDidAppear() {
+    super.viewDidAppear()
+    onViewDidAppear?()
   }
 }
