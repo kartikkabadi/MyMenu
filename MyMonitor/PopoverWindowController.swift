@@ -28,7 +28,7 @@ final class PopoverWindowController: NSObject {
       self?.applyContentSize(size)
     }
     contentViewController.onViewDidAppear = { [weak self] in
-      self?.finishPresentationSignpost(result: "visible")
+      self?.finishPresentationSignpost()
     }
 
     popover.behavior = .transient
@@ -54,9 +54,7 @@ final class PopoverWindowController: NSObject {
   }
 
   func close() {
-    if presentationSignpostID != nil {
-      finishPresentationSignpost(result: "cancelled")
-    }
+    finishPresentationSignpost()
     popover.performClose(nil)
   }
 
@@ -89,9 +87,7 @@ final class PopoverWindowController: NSObject {
   }
 
   private func beginPresentationSignpost() {
-    if presentationSignpostID != nil {
-      finishPresentationSignpost(result: "superseded")
-    }
+    finishPresentationSignpost()
 
     let signpostID = OSSignpostID(log: performanceLog)
     presentationSignpostID = signpostID
@@ -103,15 +99,13 @@ final class PopoverWindowController: NSObject {
     )
   }
 
-  private func finishPresentationSignpost(result: StaticString) {
+  private func finishPresentationSignpost() {
     guard let signpostID = presentationSignpostID else { return }
     os_signpost(
       .end,
       log: performanceLog,
       name: "Popover Presentation",
-      signpostID: signpostID,
-      "result=%{public}s",
-      String(describing: result)
+      signpostID: signpostID
     )
     presentationSignpostID = nil
   }
