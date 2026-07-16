@@ -70,19 +70,28 @@ if grep -qE 'let (savedBrightness|currentBrightness): Double\?' "$ROUTER"; then
   fail "Reconfiguration inputs must not freeze mutable brightness snapshots."
 fi
 
-grep -q 'router.handleDisplayTopologyChange()' "$ROUTER" \
-  || fail "Add/remove callbacks must reconcile topology immediately."
-topology_body=$(sed -n '/private func handleDisplayTopologyChange()/,/^  }/p' "$ROUTER")
-printf '%s\n' "$topology_body" | grep -q 'endOverlaySpaceTransition()' \
-  || fail "Topology changes must terminate temporary gamma holds immediately."
-printf '%s\n' "$topology_body" | grep -q 'removeDisconnectedBackends' \
-  || fail "Topology changes must tear down removed backends immediately."
-printf '%s\n' "$topology_body" | grep -q 'scheduleReconfigure(force: true)' \
-  || fail "Topology changes must debounce only the expensive reprobe."
+grep -q 'router.handleDisplayRoutingChange()' "$ROUTER" \
+  || fail "Add/remove and display-mode callbacks must enter the routing reconciliation path."
+grep -q 'flags.contains(.desktopShapeChangedFlag) || flags.contains(.setModeFlag)' "$ROUTER" \
+  || fail "Mirror and display-mode changes must force backend reselection."
 
-end_line=$(printf '%s\n' "$topology_body" | grep -n 'endOverlaySpaceTransition' | head -1 | cut -d: -f1)
-remove_line=$(printf '%s\n' "$topology_body" | grep -n 'removeDisconnectedBackends' | head -1 | cut -d: -f1)
-schedule_line=$(printf '%s\n' "$topology_body" | grep -n 'scheduleReconfigure(force: true)' | head -1 | cut -d: -f1)
+screen_body=$(sed -n '/private func registerScreenObservers()/,/private func registerWakeObserver()/p' "$ROUTER")
+printf '%s\n' "$screen_body" | grep -q 'didChangeScreenParametersNotification' \
+  || fail "The screen-parameter fallback observer is missing."
+printf '%s\n' "$screen_body" | grep -q 'handleDisplayRoutingChange()' \
+  || fail "Screen-parameter changes must reconcile backend routing and presentation rows."
+
+routing_body=$(sed -n '/private func handleDisplayRoutingChange()/,/^  }/p' "$ROUTER")
+printf '%s\n' "$routing_body" | grep -q 'endOverlaySpaceTransition()' \
+  || fail "Routing changes must terminate temporary gamma holds immediately."
+printf '%s\n' "$routing_body" | grep -q 'removeDisconnectedBackends' \
+  || fail "Routing changes must tear down removed backends immediately."
+printf '%s\n' "$routing_body" | grep -q 'scheduleReconfigure(force: true)' \
+  || fail "Routing changes must debounce only the expensive reprobe."
+
+end_line=$(printf '%s\n' "$routing_body" | grep -n 'endOverlaySpaceTransition' | head -1 | cut -d: -f1)
+remove_line=$(printf '%s\n' "$routing_body" | grep -n 'removeDisconnectedBackends' | head -1 | cut -d: -f1)
+schedule_line=$(printf '%s\n' "$routing_body" | grep -n 'scheduleReconfigure(force: true)' | head -1 | cut -d: -f1)
 if (( end_line >= remove_line || remove_line >= schedule_line )); then
   fail "Transition holds and removed resources must be released before the reprobe is scheduled."
 fi
@@ -101,12 +110,22 @@ if (( forget_reprobes < 5 )); then
   fail "Refresh, retry, forget, and reset paths must all force capability reconciliation."
 fi
 
-# The adapted IOKit matcher runs on every DDC reprobe; skipped and returned objects must be balanced.
-grep -q 'defer { cpath.deallocate() }' "$ARM64_DDC" \
-  || fail "The allocated IORegistry path buffer must be deallocated."
+# The adapted IOKit matcher runs on every DDC reprobe; ownership and extracted state must be safe.
+grep -q 'cpath.initialize(repeating: 0' "$ARM64_DDC" \
+  || fail "The IORegistry path buffer must be initialized before a possible failed path lookup."
+grep -q 'IORegistryEntryGetPath.*== KERN_SUCCESS' "$ARM64_DDC" \
+  || fail "A failed IORegistry path lookup must not be converted from uninitialized memory."
+grep -q 'cpath.deinitialize' "$ARM64_DDC" \
+  || fail "The initialized IORegistry path buffer must be deinitialized."
 grep -q 'IOObjectRelease(entry)' "$ARM64_DDC" \
   || fail "Skipped IORegistry iterator entries must be released."
 grep -q 'IOObjectRelease(objectOfInterest.entry)' "$ARM64_DDC" \
   || fail "Matched IORegistry iterator entries must be released after extraction."
+grep -q 'ioregService.service = nil' "$ARM64_DDC" \
+  || fail "Each DCPAV proxy lookup must clear a previous service handle first."
+grep -q 'if ioregService.service != nil' "$ARM64_DDC" \
+  || fail "Only validated external IOAV services may enter DDC matching."
+grep -q 'ioregService = IOregService()' "$ARM64_DDC" \
+  || fail "Proxy matching state must reset after each service candidate."
 
 printf 'Backend concurrency validation passed.\n'
