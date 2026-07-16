@@ -9,18 +9,17 @@ enum BrightnessTier: String, Codable, Sendable {
 }
 
 /// Per-display brightness control (DDC, gamma, or overlay).
+///
+/// Capability discovery is intentionally outside this protocol. Slow probes must complete before
+/// a backend is installed, rather than blocking construction or the main actor.
 @MainActor
 protocol BrightnessBackend: AnyObject {
   static var tier: BrightnessTier { get }
 
   init(displayID: CGDirectDisplayID)
 
-  /// Whether this tier can control the given display (for example, a DDC luminance read succeeds).
-  static func probe(displayID: CGDirectDisplayID) -> Bool
-
-  /// Normalized user-facing brightness: 0 = darkest, 1 = brightest.
-  /// Every backend must preserve this invariant so switching control tiers never reverses the UI.
-  /// Pass `animated: false` while the user is dragging for immediate feedback.
+  /// Normalized user-facing brightness: 0 = darkest and 1 = brightest.
+  /// Every backend preserves this invariant so switching control tiers never reverses the UI.
   func setBrightness(_ value: Double, animated: Bool)
 
   /// Release resources (windows, gamma state, pending DDC writes).
