@@ -31,18 +31,16 @@ jobs:
 
           path = Path("scripts/apply_router_lifetime_fix.py")
           text = path.read_text()
-          old = '''    """    NotificationCenter.default.addObserver(
-          """,
-              """    defaultNotificationObservers.append(NotificationCenter.default.addObserver(
-          """,
-          '''
-          new = '''    """    NotificationCenter.default.addObserver(
-              forName: NSApplication.didChangeScreenParametersNotification,
-          """,
-              """    defaultNotificationObservers.append(NotificationCenter.default.addObserver(
-              forName: NSApplication.didChangeScreenParametersNotification,
-          """,
-          '''
+          old = (
+              '    """    NotificationCenter.default.addObserver(\n""",\n'
+              '    """    defaultNotificationObservers.append(NotificationCenter.default.addObserver(\n""",'
+          )
+          new = (
+              '    """    NotificationCenter.default.addObserver(\n'
+              '      forName: NSApplication.didChangeScreenParametersNotification,\n""",\n'
+              '    """    defaultNotificationObservers.append(NotificationCenter.default.addObserver(\n'
+              '      forName: NSApplication.didChangeScreenParametersNotification,\n""",'
+          )
           if text.count(old) != 1:
               raise RuntimeError(f"observer script anchor: expected one match, found {text.count(old)}")
           path.write_text(text.replace(old, new, 1))
