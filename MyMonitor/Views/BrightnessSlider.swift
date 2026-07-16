@@ -17,9 +17,16 @@ struct BrightnessSlider: View {
         onEditingChanged: handleEditingChange
       )
       .controlSize(.regular)
-      .accessibilityLabel("Brightness for \(monitor.name)")
-      .accessibilityValue("\(percentage) percent")
-      .accessibilityHint("Adjusts external-display brightness.")
+      .accessibilityLabel(
+        String(localized: "Brightness for \(monitor.name)")
+      )
+      .accessibilityValue(
+        String(localized: "\(percentage) percent")
+      )
+      .accessibilityHint(
+        String(localized: "Adjusts external-display brightness.")
+      )
+      .accessibilityIdentifier("popover.brightness.\(monitor.id.rawValue)")
 
       Image(systemName: "sun.max")
         .foregroundStyle(.secondary)
