@@ -34,9 +34,19 @@ enum DisplayGamma {
     displayID: CGDirectDisplayID,
     includeBuiltin: Bool = false
   ) {
-    guard includeBuiltin || CGDisplayIsBuiltin(displayID) == 0 else { return }
-    holds.removeBrightness(for: displayID)
-    _ = applyBrightness(1.0, to: displayID)
+    releaseHolds([displayID], includeBuiltin: includeBuiltin)
+  }
+
+  /// Remove a related hold set with one global ColorSync restore. Writing an identity curve is not
+  /// sufficient because it can discard the display's calibrated transfer state.
+  static func releaseHolds<S: Sequence>(
+    _ displayIDs: S,
+    includeBuiltin: Bool = false
+  ) where S.Element == CGDirectDisplayID {
+    let releasable = displayIDs.filter { includeBuiltin || CGDisplayIsBuiltin($0) == 0 }
+    guard !releasable.isEmpty else { return }
+    holds.removeBrightness(for: releasable)
+    restoreColorSyncAndReapplyHolds()
   }
 
   /// ColorSync restoration is process-global. Replay every still-owned hold immediately so
