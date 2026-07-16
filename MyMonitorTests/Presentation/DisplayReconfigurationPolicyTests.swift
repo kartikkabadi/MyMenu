@@ -1,5 +1,5 @@
 import XCTest
-@testable import MyMonitorPresentation
+@testable import MyMonitorPolicies
 
 final class DisplayReconfigurationPolicyTests: XCTestCase {
   func testLiveBrightnessWinsOverStalePersistedAndProbedValues() {
