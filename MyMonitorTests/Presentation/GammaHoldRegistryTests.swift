@@ -8,8 +8,8 @@ final class GammaHoldRegistryTests: XCTestCase {
     registry.setBrightness(0.35, for: 1)
     registry.setBrightness(0.8, for: 2)
 
-    XCTAssertEqual(registry.brightnessByID[1], 0.35, accuracy: 0.0001)
-    XCTAssertEqual(registry.brightnessByID[2], 0.8, accuracy: 0.0001)
+    assertBrightness(registry.brightnessByID[1], equals: 0.35)
+    assertBrightness(registry.brightnessByID[2], equals: 0.8)
   }
 
   func testReplacingOneHoldDoesNotChangeAnother() {
@@ -19,8 +19,8 @@ final class GammaHoldRegistryTests: XCTestCase {
 
     registry.setBrightness(0.55, for: 1)
 
-    XCTAssertEqual(registry.brightnessByID[1], 0.55, accuracy: 0.0001)
-    XCTAssertEqual(registry.brightnessByID[2], 0.8, accuracy: 0.0001)
+    assertBrightness(registry.brightnessByID[1], equals: 0.55)
+    assertBrightness(registry.brightnessByID[2], equals: 0.8)
   }
 
   func testRemovingOneHoldPreservesAllOthers() {
@@ -31,7 +31,7 @@ final class GammaHoldRegistryTests: XCTestCase {
     registry.removeBrightness(for: 1)
 
     XCTAssertNil(registry.brightnessByID[1])
-    XCTAssertEqual(registry.brightnessByID[2], 0.8, accuracy: 0.0001)
+    assertBrightness(registry.brightnessByID[2], equals: 0.8)
   }
 
   func testRegistryClampsBrightnessToNormalizedBounds() {
@@ -40,7 +40,21 @@ final class GammaHoldRegistryTests: XCTestCase {
     registry.setBrightness(-0.2, for: 1)
     registry.setBrightness(1.4, for: 2)
 
-    XCTAssertEqual(registry.brightnessByID[1], 0, accuracy: 0.0001)
-    XCTAssertEqual(registry.brightnessByID[2], 1, accuracy: 0.0001)
+    assertBrightness(registry.brightnessByID[1], equals: 0)
+    assertBrightness(registry.brightnessByID[2], equals: 1)
   }
+}
+
+private func assertBrightness(
+  _ actual: Double?,
+  equals expected: Double,
+  accuracy: Double = 0.0001,
+  file: StaticString = #filePath,
+  line: UInt = #line
+) {
+  guard let actual else {
+    XCTFail("Expected a brightness value", file: file, line: line)
+    return
+  }
+  XCTAssertEqual(actual, expected, accuracy: accuracy, file: file, line: line)
 }
