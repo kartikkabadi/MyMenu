@@ -33,17 +33,46 @@ final class DisplayRouter {
   private var overlayTransitionEndWorkItem: DispatchWorkItem?
   private var gammaHoldDisplayIDs: Set<CGDirectDisplayID> = []
   private var reconfigurationGeneration: UInt64 = 0
+  private var defaultNotificationObservers: [NSObjectProtocol] = []
+  private var workspaceNotificationObservers: [NSObjectProtocol] = []
+  private var hasTornDown = false
   private let defaults = UserDefaults.standard
 
   private static let overlayTransitionDuration: TimeInterval = 0.9
   private static let preferencesVersion = "v2"
   private static let knownDisplayIDsKey = "MyMonitor.v2.knownDisplayIDs"
+  private static let displayReconfigurationCallback: CGDisplayReconfigurationCallBack = {
+    _, flags, userInfo in
+    guard let userInfo else { return }
+    let router = Unmanaged<DisplayRouter>.fromOpaque(userInfo).takeUnretainedValue()
+
+    if flags.contains(.beginConfigurationFlag) {
+      Task { @MainActor in router.scheduleOverlaySpaceSync() }
+      return
+    }
+
+    if flags.contains(.addFlag) || flags.contains(.removeFlag) {
+      Task { @MainActor in router.handleDisplayRoutingChange() }
+      return
+    }
+
+    // Mirroring and display-mode changes can change the required backend without changing the
+    // connected ID set. They must enter the same generation-safe routing path as hot-plug.
+    if flags.contains(.desktopShapeChangedFlag) || flags.contains(.setModeFlag) {
+      Task { @MainActor in router.handleDisplayRoutingChange() }
+      return
+    }
+
+    let layoutOnly: CGDisplayChangeSummaryFlags = [.movedFlag, .setMainFlag]
+    if flags.isSubset(of: layoutOnly) {
+      Task { @MainActor in router.scheduleOverlaySpaceSync() }
+    }
+  }
 
   init() {
     registerDisplayCallbacks()
     registerScreenObservers()
     registerWakeObserver()
-    registerTerminateObserver()
     reconfigure()
   }
 
@@ -104,6 +133,7 @@ final class DisplayRouter {
     animated: Bool = false,
     persist: Bool = true
   ) {
+    guard !hasTornDown else { return }
     let allowedRange = displays.first(where: { $0.id == displayID })?.allowedRange ?? 0...1
     let clamped = min(
       max(value, allowedRange.lowerBound),
@@ -126,6 +156,7 @@ final class DisplayRouter {
     _ range: ClosedRange<Double>,
     for displayID: CGDirectDisplayID
   ) {
+    guard !hasTornDown else { return }
     let lower = min(max(range.lowerBound, 0), 1)
     let upper = min(max(range.upperBound, 0), 1)
     let normalized = min(lower, upper)...max(lower, upper)
@@ -154,6 +185,7 @@ final class DisplayRouter {
     _ preference: BrightnessControlPreference,
     for displayID: CGDirectDisplayID
   ) {
+    guard !hasTornDown else { return }
     persistControlPreference(preference, displayID: displayID)
     rememberDisplay(
       displayID,
@@ -169,6 +201,7 @@ final class DisplayRouter {
 
   /// Remove all saved values for one display without changing its current physical brightness.
   func forgetDisplayConfiguration(for displayID: CGDirectDisplayID) {
+    guard !hasTornDown else { return }
     for suffix in [
       "brightness",
       "minimumBrightness",
@@ -190,6 +223,7 @@ final class DisplayRouter {
   /// changes the preferred control method. Existing controls remain alive while slow DDC work
   /// completes, and the final backend set is swapped atomically on the main actor.
   func reconfigure(force: Bool = false) {
+    guard !hasTornDown else { return }
     reconfigureWorkItem?.cancel()
     reconfigureWorkItem = nil
 
@@ -241,6 +275,22 @@ final class DisplayRouter {
   }
 
   func teardownAll() {
+    guard !hasTornDown else { return }
+    hasTornDown = true
+
+    CGDisplayRemoveReconfigurationCallback(
+      Self.displayReconfigurationCallback,
+      Unmanaged.passUnretained(self).toOpaque()
+    )
+    for token in defaultNotificationObservers {
+      NotificationCenter.default.removeObserver(token)
+    }
+    defaultNotificationObservers.removeAll()
+    for token in workspaceNotificationObservers {
+      NSWorkspace.shared.notificationCenter.removeObserver(token)
+    }
+    workspaceNotificationObservers.removeAll()
+
     invalidatePendingReconfiguration()
     teardownInstalledBackends()
   }
@@ -258,7 +308,7 @@ final class DisplayRouter {
     ddcResults: [CGDirectDisplayID: DDCProbeResult],
     generation: UInt64
   ) {
-    guard generation == reconfigurationGeneration else {
+    guard !hasTornDown, generation == reconfigurationGeneration else {
       Self.invalidate(ddcResults)
       return
     }
@@ -463,6 +513,7 @@ final class DisplayRouter {
   }
 
   private func scheduleOverlaySpaceSync() {
+    guard !hasTornDown else { return }
     overlayTransitionEndWorkItem?.cancel()
     beginOverlaySpaceTransition()
 
@@ -662,39 +713,14 @@ final class DisplayRouter {
   // MARK: - Hot-plug, Spaces, and wake
 
   private func registerDisplayCallbacks() {
-    let callback: CGDisplayReconfigurationCallBack = { _, flags, userInfo in
-      guard let userInfo else { return }
-      let router = Unmanaged<DisplayRouter>.fromOpaque(userInfo).takeUnretainedValue()
-
-      if flags.contains(.beginConfigurationFlag) {
-        Task { @MainActor in router.scheduleOverlaySpaceSync() }
-        return
-      }
-
-      if flags.contains(.addFlag) || flags.contains(.removeFlag) {
-        Task { @MainActor in router.handleDisplayRoutingChange() }
-        return
-      }
-
-      // Mirroring and display-mode changes can change the required backend without changing the
-      // connected ID set. They must enter the same generation-safe routing path as hot-plug.
-      if flags.contains(.desktopShapeChangedFlag) || flags.contains(.setModeFlag) {
-        Task { @MainActor in router.handleDisplayRoutingChange() }
-        return
-      }
-
-      let layoutOnly: CGDisplayChangeSummaryFlags = [.movedFlag, .setMainFlag]
-      if flags.isSubset(of: layoutOnly) {
-        Task { @MainActor in router.scheduleOverlaySpaceSync() }
-      }
-    }
-
-    let unmanaged = Unmanaged.passUnretained(self)
-    CGDisplayRegisterReconfigurationCallback(callback, unmanaged.toOpaque())
+    CGDisplayRegisterReconfigurationCallback(
+      Self.displayReconfigurationCallback,
+      Unmanaged.passUnretained(self).toOpaque()
+    )
   }
 
   private func registerScreenObservers() {
-    NotificationCenter.default.addObserver(
+    defaultNotificationObservers.append(NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification,
       object: nil,
       queue: .main
@@ -702,19 +728,19 @@ final class DisplayRouter {
       // This notification is the fallback for mode/mirror transitions whose Core Graphics flag
       // sequence varies by macOS release or adapter. Debouncing happens inside the routing path.
       Task { @MainActor in self?.handleDisplayRoutingChange() }
-    }
+    })
 
-    NSWorkspace.shared.notificationCenter.addObserver(
+    workspaceNotificationObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.activeSpaceDidChangeNotification,
       object: nil,
       queue: .main
     ) { [weak self] _ in
       Task { @MainActor in self?.scheduleOverlaySpaceSync() }
-    }
+    })
   }
 
   private func registerWakeObserver() {
-    NSWorkspace.shared.notificationCenter.addObserver(
+    workspaceNotificationObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didWakeNotification,
       object: nil,
       queue: .main
@@ -722,22 +748,13 @@ final class DisplayRouter {
       // Wake invalidates any pre-sleep probe immediately; delaying generation advancement allows a
       // stale service result to install during the debounce window.
       Task { @MainActor in self?.reconfigure(force: true) }
-    }
-  }
-
-  private func registerTerminateObserver() {
-    NotificationCenter.default.addObserver(
-      forName: NSApplication.willTerminateNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor in self?.teardownAll() }
-    }
+    })
   }
 
   /// Reconcile hot-plug, display-mode, and mirror-routing changes. Stale rows and resources are
   /// removed immediately; only the expensive capability reprobe is debounced.
   private func handleDisplayRoutingChange() {
+    guard !hasTornDown else { return }
     reconfigureWorkItem?.cancel()
     reconfigureWorkItem = nil
     reconfigurationGeneration &+= 1
@@ -763,6 +780,7 @@ final class DisplayRouter {
   }
 
   private func scheduleReconfigure(force: Bool = false) {
+    guard !hasTornDown else { return }
     reconfigureWorkItem?.cancel()
     let work = DispatchWorkItem { [weak self] in
       Task { @MainActor in self?.reconfigure(force: force) }

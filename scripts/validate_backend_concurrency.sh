@@ -128,6 +128,17 @@ grep -q 'func applicationWillTerminate' "$APP_DELEGATE" \
   || fail "Application termination must synchronously enter the teardown path."
 grep -q 'private var hasTornDown' "$APP_DELEGATE" \
   || fail "Application teardown must be idempotent across Quit and willTerminate callbacks."
+grep -q 'CGDisplayRemoveReconfigurationCallback' "$ROUTER" \
+  || fail "Router teardown must unregister the unretained Core Graphics callback."
+grep -q 'defaultNotificationObservers' "$ROUTER" \
+  || fail "Router teardown must own and remove default notification observers."
+grep -q 'workspaceNotificationObservers' "$ROUTER" \
+  || fail "Router teardown must own and remove workspace notification observers."
+if grep -q 'registerTerminateObserver' "$ROUTER"; then
+  fail "Router teardown must be driven synchronously by the application delegate, not a queued termination observer."
+fi
+grep -q 'guard !hasTornDown, generation == reconfigurationGeneration' "$ROUTER" \
+  || fail "Late probe results must be invalidated after router teardown."
 quit_body=$(sed -n '/func quitApp()/,/^  }/p' "$APP_DELEGATE")
 printf '%s\n' "$quit_body" | grep -q 'teardown()' \
   || fail "The explicit Quit action must use the shared synchronous teardown path."
