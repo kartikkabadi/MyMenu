@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   static private(set) var shared: AppDelegate!
 
   private let presentationStore: DisplayPresentationStore
+  private let launchAtLoginController: LaunchAtLoginController
   private var statusItem: NSStatusItem!
   private var popoverController: PopoverWindowController!
   private var settingsController: SettingsWindowController!
@@ -14,13 +15,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let router = DisplayRouter()
     let controller = DisplayRouterAdapter(router: router)
     presentationStore = DisplayPresentationStore(controller: controller)
+    launchAtLoginController = LaunchAtLoginController(
+      service: SystemLaunchAtLoginService()
+    )
     super.init()
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     Self.shared = self
     popoverController = PopoverWindowController(store: presentationStore)
-    settingsController = SettingsWindowController(store: presentationStore)
+    settingsController = SettingsWindowController(
+      store: presentationStore,
+      launchAtLoginController: launchAtLoginController
+    )
 
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     guard let button = statusItem.button else { return }

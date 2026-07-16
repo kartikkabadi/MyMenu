@@ -8,9 +8,19 @@ final class SettingsWindowController: NSWindowController {
   private static let defaultSize = NSSize(width: 720, height: 500)
   private static let minimumSize = NSSize(width: 620, height: 420)
 
-  init(store: DisplayPresentationStore) {
+  private let launchAtLoginController: LaunchAtLoginController
+
+  init(
+    store: DisplayPresentationStore,
+    launchAtLoginController: LaunchAtLoginController
+  ) {
+    self.launchAtLoginController = launchAtLoginController
+
     let contentViewController = NSHostingController(
-      rootView: SettingsRootView(store: store)
+      rootView: SettingsRootView(
+        store: store,
+        launchAtLoginController: launchAtLoginController
+      )
     )
     let window = NSWindow(
       contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -43,6 +53,7 @@ final class SettingsWindowController: NSWindowController {
   func show() {
     guard let window else { return }
 
+    launchAtLoginController.refresh()
     NSApp.activate(ignoringOtherApps: true)
     showWindow(nil)
     window.makeKeyAndOrderFront(nil)
