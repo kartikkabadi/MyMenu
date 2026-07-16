@@ -79,16 +79,34 @@ struct BrightnessPopoverView: View {
     .padding(.vertical, 8)
   }
 
-  @ViewBuilder
   private var monitorList: some View {
-    if store.monitors.count <= BrightnessDesign.maximumUnscrolledMonitorCount {
-      monitorRows
-    } else {
-      ScrollView {
+    VStack(spacing: 0) {
+      if store.monitors.count > 1 {
+        displaysHeading
+      }
+
+      if store.monitors.count >= BrightnessDesign.scrollingMonitorThreshold {
+        ScrollView {
+          monitorRows
+        }
+        .scrollIndicators(.automatic)
+        .frame(height: BrightnessDesign.maximumMonitorListHeight)
+      } else {
         monitorRows
       }
-      .frame(height: BrightnessDesign.maximumMonitorListHeight)
     }
+  }
+
+  private var displaysHeading: some View {
+    HStack {
+      Text("Displays")
+        .font(.callout.weight(.semibold))
+
+      Spacer()
+    }
+    .padding(.horizontal, 14)
+    .padding(.top, 12)
+    .padding(.bottom, 4)
   }
 
   private var monitorRows: some View {
