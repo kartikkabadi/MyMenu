@@ -43,7 +43,7 @@ final class DisplayPresentationStoreTests: XCTestCase {
     store.beginBrightnessAdjustment(for: monitorID)
     store.updateBrightness(1.2, for: monitorID)
 
-    XCTAssertEqual(store.monitor(withID: monitorID)?.brightness, 0.9, accuracy: 0.0001)
+    assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.9)
     XCTAssertEqual(
       controller.writes.last,
       .init(
@@ -69,7 +69,7 @@ final class DisplayPresentationStoreTests: XCTestCase {
     stale.brightness = 0.42
     controller.emit(.ready([stale]))
 
-    XCTAssertEqual(store.monitor(withID: monitorID)?.brightness, 0.81, accuracy: 0.0001)
+    assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.81)
   }
 
   func testAcknowledgedFinalWriteReleasesOptimisticOverride() {
@@ -101,7 +101,7 @@ final class DisplayPresentationStoreTests: XCTestCase {
     laterHardwareChange.brightness = 0.67
     controller.emit(.ready([laterHardwareChange]))
 
-    XCTAssertEqual(store.monitor(withID: monitorID)?.brightness, 0.67, accuracy: 0.0001)
+    assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.67)
   }
 
   func testRefreshPublishesDetectingStateWithCurrentRows() {
@@ -133,7 +133,7 @@ final class DisplayPresentationStoreTests: XCTestCase {
     reconnected.brightness = 0.34
     controller.emit(.ready([reconnected]))
 
-    XCTAssertEqual(store.monitor(withID: monitorID)?.brightness, 0.34, accuracy: 0.0001)
+    assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.34)
   }
 
   func testFixturesCoverRequiredPresentationStatesDeterministically() {
@@ -222,18 +222,16 @@ private final class FakeMonitorController: MonitorControlling {
   }
 }
 
-private extension Optional where Wrapped == Double {
-  static func XCTAssertEqual(
-    _ expression: Double?,
-    _ expected: Double,
-    accuracy: Double,
-    file: StaticString = #filePath,
-    line: UInt = #line
-  ) {
-    guard let expression else {
-      XCTFail("Expected a brightness value", file: file, line: line)
-      return
-    }
-    XCTest.XCTAssertEqual(expression, expected, accuracy: accuracy, file: file, line: line)
+private func assertBrightness(
+  _ actual: Double?,
+  equals expected: Double,
+  accuracy: Double = 0.0001,
+  file: StaticString = #filePath,
+  line: UInt = #line
+) {
+  guard let actual else {
+    XCTFail("Expected a brightness value", file: file, line: line)
+    return
   }
+  XCTAssertEqual(actual, expected, accuracy: accuracy, file: file, line: line)
 }
