@@ -38,6 +38,10 @@ grep -q 'self.service = nil' "$DDC" \
   || fail "A failed DDC service must be discarded so a later request can rematch it."
 grep -q 'private func readRangeIfNeeded.*-> Bool' "$DDC" \
   || fail "Unvalidated DDC ranges must prevent a write instead of assuming a maximum."
+grep -q 'writeBrightness(normalized, allowRematch: true)' "$DDC" \
+  || fail "The latest DDC value must receive one immediate stale-service recovery attempt."
+grep -q 'writeBrightness(normalized, allowRematch: false)' "$DDC" \
+  || fail "DDC stale-service recovery must be bounded to one rematch rather than looping."
 
 grep -q 'activeOwnerByDisplay' "$GAMMA_BACKEND" \
   || fail "Gamma replacement must retain per-display ownership."
