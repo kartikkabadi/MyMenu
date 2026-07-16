@@ -56,7 +56,7 @@ final class KeyboardShortcutControllerTests: XCTestCase {
     XCTAssertNil(controller.shortcut(for: .increaseBrightness))
   }
 
-  func testRegistrationFailurePreservesPreviousConfiguration() {
+  func testRegistrationFailurePreservesConfigurationAndWorkingRegistrations() {
     let initial = KeyboardShortcutConfiguration(
       decreaseShortcut: decreaseShortcut,
       increaseShortcut: nil,
@@ -65,12 +65,14 @@ final class KeyboardShortcutControllerTests: XCTestCase {
     let service = FakeGlobalHotKeyService()
     let persistence = FakeKeyboardShortcutPersistence(configuration: initial)
     let controller = KeyboardShortcutController(service: service, persistence: persistence)
+    service.clearsRegistrationsBeforeThrow = true
     service.nextError = TestError.unavailable
 
     controller.setShortcut(increaseShortcut, for: .increaseBrightness)
 
     XCTAssertEqual(controller.configuration, initial)
     XCTAssertEqual(controller.errorMessage, TestError.unavailable.localizedDescription)
+    XCTAssertEqual(service.registrations, initial.registrations)
     XCTAssertTrue(persistence.savedConfigurations.isEmpty)
   }
 
@@ -204,6 +206,7 @@ private final class FakeGlobalHotKeyService: GlobalHotKeyServing {
   private(set) var registrations: [GlobalHotKeyRegistration] = []
   private var handler: (@MainActor (KeyboardShortcutAction) -> Void)?
   var nextError: Error?
+  var clearsRegistrationsBeforeThrow = false
 
   func replaceRegistrations(
     _ registrations: [GlobalHotKeyRegistration],
@@ -211,6 +214,10 @@ private final class FakeGlobalHotKeyService: GlobalHotKeyServing {
   ) throws {
     if let nextError {
       self.nextError = nil
+      if clearsRegistrationsBeforeThrow {
+        self.registrations = []
+        self.handler = nil
+      }
       throw nextError
     }
     self.registrations = registrations
@@ -219,6 +226,7 @@ private final class FakeGlobalHotKeyService: GlobalHotKeyServing {
 
   func unregisterAll() {
     registrations = []
+    handler = nil
   }
 
   func fire(_ action: KeyboardShortcutAction) {
