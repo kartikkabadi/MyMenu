@@ -31,5 +31,7 @@ grep -q '\.detecting(cached:' "$ADAPTER" \
   || fail "The adapter must publish cached controls while reconfiguration is in progress."
 grep -q 'DDCBrightnessBackend.probe(displayIDs:' "$ROUTER" \
   || fail "DDC capability discovery must use the asynchronous batch probe."
+grep -q 'if persist, router.isReconfiguring' "$ADAPTER" \
+  || fail "A committed cached brightness change must invalidate the older probe generation."
 
 printf 'Backend concurrency validation passed.\n'
