@@ -38,4 +38,17 @@ enum DisplayReconfigurationPolicy {
     }
     return [representative]
   }
+
+  /// A collapsed full-mirror row represents every connected external member of that mirror set.
+  /// Outside a full mirror, control remains scoped to the selected display.
+  static func controlIDs<ID: Hashable>(
+    connected: [ID],
+    mirrored: Set<ID>,
+    selected: ID,
+    isFullMirror: Bool
+  ) -> [ID] {
+    guard isFullMirror, mirrored.contains(selected) else { return [selected] }
+    let members = connected.filter(mirrored.contains)
+    return members.isEmpty ? [selected] : members
+  }
 }
