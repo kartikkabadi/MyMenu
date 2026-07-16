@@ -14,11 +14,29 @@ It has one job: detect connected monitors, choose the best available control met
 
 MyMonitor does not include window management, an Alt-Tab replacement, accounts, analytics, cloud storage, or network services.
 
-## Frontend specification
+## Canonical specifications
 
-The canonical native macOS frontend contract lives in [`docs/frontend/`](docs/frontend/README.md). It includes the research basis, full popover and Settings interaction specification, native component/design rules, binding decisions, sequential implementation tickets, and objective QA matrix.
+### Frontend
+
+The native macOS frontend contract lives in [`docs/frontend/`](docs/frontend/README.md). It includes the research basis, complete popover and Settings interaction specification, native component/design rules, binding decisions, sequential implementation tickets, and objective QA matrix.
 
 Frontend work must follow that contract one ticket at a time. It must use real macOS components and system behavior rather than custom glass cards, fixed visual styling, or placeholder features.
+
+### Backend
+
+The local display-control engine contract lives in [`docs/backend/`](docs/backend/README.md). It defines:
+
+- desired versus observed brightness;
+- non-mutating cold discovery;
+- wake and reconnect continuity;
+- durable display identity and migration;
+- Apple Native, DDC/CI, Gamma, and Shade control contracts;
+- topology generations and operation ownership;
+- typed failures and privacy-scoped diagnostics;
+- sequential implementation tickets;
+- automated and physical-hardware qualification gates.
+
+Backend work must preserve a responsive main actor, keep low-level platform calls behind the approved adapter boundary, and avoid compatibility claims without real-monitor evidence.
 
 ## Requirements
 
@@ -63,7 +81,7 @@ git diff --check
 
 Every pull request is also built with Xcode 26 in GitHub Actions.
 
-Brightness behavior must be tested on real hardware because DDC support depends on the monitor, cable, dock, and adapter. Useful bug reports include the Mac model, macOS version, monitor model, connection path, selected control tier, and exact reproduction steps.
+Brightness behavior must be tested on real hardware because control support depends on the monitor, cable, dock, adapter, topology, and macOS version. Useful bug reports include the Mac model, macOS version, monitor model, connection path, requested and active control methods, and exact reproduction steps.
 
 ## Distribution status
 
