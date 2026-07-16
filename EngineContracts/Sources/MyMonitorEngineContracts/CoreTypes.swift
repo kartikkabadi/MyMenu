@@ -1,25 +1,31 @@
 import Foundation
 
-struct NormalizedBrightness: RawRepresentable, Hashable, Comparable, Codable, Sendable {
-  let rawValue: Double
+public struct NormalizedBrightness: RawRepresentable, Hashable, Comparable, Codable, Sendable {
+  public let rawValue: Double
 
-  init?(rawValue: Double) {
+  public init?(rawValue: Double) {
     guard rawValue.isFinite, (0...1).contains(rawValue) else { return nil }
     self.rawValue = rawValue
   }
 
-  static let darkest = NormalizedBrightness(rawValue: 0)!
-  static let brightest = NormalizedBrightness(rawValue: 1)!
+  public static let darkest = NormalizedBrightness(rawValue: 0)!
+  public static let brightest = NormalizedBrightness(rawValue: 1)!
 
-  static func clamping(_ value: Double) -> NormalizedBrightness {
-    NormalizedBrightness(rawValue: min(max(value.isFinite ? value : 0, 0), 1))!
+  public static func clamping(_ value: Double) -> NormalizedBrightness {
+    if value.isNaN || value == -.infinity {
+      return .darkest
+    }
+    if value == .infinity {
+      return .brightest
+    }
+    return NormalizedBrightness(rawValue: min(max(value, 0), 1))!
   }
 
-  static func < (lhs: NormalizedBrightness, rhs: NormalizedBrightness) -> Bool {
+  public static func < (lhs: NormalizedBrightness, rhs: NormalizedBrightness) -> Bool {
     lhs.rawValue < rhs.rawValue
   }
 
-  init(from decoder: Decoder) throws {
+  public init(from decoder: Decoder) throws {
     let container = try decoder.singleValueContainer()
     let value = try container.decode(Double.self)
     guard let brightness = NormalizedBrightness(rawValue: value) else {
@@ -31,67 +37,67 @@ struct NormalizedBrightness: RawRepresentable, Hashable, Comparable, Codable, Se
     self = brightness
   }
 
-  func encode(to encoder: Encoder) throws {
+  public func encode(to encoder: Encoder) throws {
     var container = encoder.singleValueContainer()
     try container.encode(rawValue)
   }
 }
 
-struct RuntimeDisplayID: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: UInt32
+public struct RuntimeDisplayID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: UInt32
 
-  init(rawValue: UInt32) {
+  public init(rawValue: UInt32) {
     self.rawValue = rawValue
   }
 }
 
-struct PersistentDisplayID: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: String
+public struct PersistentDisplayID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: String
 
-  init(rawValue: String) {
+  public init(rawValue: String) {
     self.rawValue = rawValue
   }
 }
 
-struct DisplayGroupID: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: String
+public struct DisplayGroupID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: String
 
-  init(rawValue: String) {
+  public init(rawValue: String) {
     self.rawValue = rawValue
   }
 }
 
-struct DDCServiceID: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: String
+public struct DDCServiceID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: String
 
-  init(rawValue: String) {
+  public init(rawValue: String) {
     self.rawValue = rawValue
   }
 }
 
-struct OwnerToken: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: UUID
+public struct ControlOwnerID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: UUID
 
-  init(rawValue: UUID = UUID()) {
+  public init(rawValue: UUID = UUID()) {
     self.rawValue = rawValue
   }
 }
 
-struct EngineOperationID: RawRepresentable, Hashable, Codable, Sendable {
-  let rawValue: UUID
+public struct EngineOperationID: RawRepresentable, Hashable, Codable, Sendable {
+  public let rawValue: UUID
 
-  init(rawValue: UUID = UUID()) {
+  public init(rawValue: UUID = UUID()) {
     self.rawValue = rawValue
   }
 }
 
-enum DisplayControlMethod: String, Codable, Sendable, CaseIterable {
+public enum DisplayControlMethod: String, Codable, Sendable, CaseIterable {
   case appleNative
   case ddc
   case gamma
   case shade
 
-  var domain: BrightnessControlDomain {
+  public var domain: BrightnessControlDomain {
     switch self {
     case .appleNative, .ddc:
       .hardware
@@ -103,19 +109,19 @@ enum DisplayControlMethod: String, Codable, Sendable, CaseIterable {
   }
 }
 
-enum BrightnessControlDomain: String, Codable, Sendable, CaseIterable {
+public enum BrightnessControlDomain: String, Codable, Sendable, CaseIterable {
   case hardware
   case gamma
   case shade
 }
 
-enum ControlPreference: String, Codable, Sendable, CaseIterable {
+public enum ControlPreference: String, Codable, Sendable, CaseIterable {
   case automatic
   case hardware
   case software
   case shade
 
-  func permits(_ method: DisplayControlMethod) -> Bool {
+  public func permits(_ method: DisplayControlMethod) -> Bool {
     switch self {
     case .automatic:
       true
@@ -129,12 +135,12 @@ enum ControlPreference: String, Codable, Sendable, CaseIterable {
   }
 }
 
-struct DesiredBrightnessSet: Equatable, Codable, Sendable {
-  var hardware: NormalizedBrightness?
-  var gamma: NormalizedBrightness?
-  var shade: NormalizedBrightness?
+public struct DesiredBrightnessSet: Equatable, Codable, Sendable {
+  public var hardware: NormalizedBrightness?
+  public var gamma: NormalizedBrightness?
+  public var shade: NormalizedBrightness?
 
-  init(
+  public init(
     hardware: NormalizedBrightness? = nil,
     gamma: NormalizedBrightness? = nil,
     shade: NormalizedBrightness? = nil
@@ -144,7 +150,7 @@ struct DesiredBrightnessSet: Equatable, Codable, Sendable {
     self.shade = shade
   }
 
-  subscript(domain: BrightnessControlDomain) -> NormalizedBrightness? {
+  public subscript(domain: BrightnessControlDomain) -> NormalizedBrightness? {
     get {
       switch domain {
       case .hardware: hardware
@@ -162,7 +168,7 @@ struct DesiredBrightnessSet: Equatable, Codable, Sendable {
   }
 }
 
-enum ObservationSource: String, Codable, Sendable {
+public enum ObservationSource: String, Codable, Sendable {
   case appleNativeReadback
   case ddcRead
   case postWriteVerification
@@ -170,19 +176,19 @@ enum ObservationSource: String, Codable, Sendable {
   case shadeOwnership
 }
 
-enum ObservationConfidence: String, Codable, Sendable {
+public enum ObservationConfidence: String, Codable, Sendable {
   case exact
   case high
   case qualified
 }
 
-struct ObservedBrightness: Equatable, Codable, Sendable {
-  let value: NormalizedBrightness
-  let source: ObservationSource
-  let observedAt: EngineInstant
-  let confidence: ObservationConfidence
+public struct ObservedBrightness: Equatable, Codable, Sendable {
+  public let value: NormalizedBrightness
+  public let source: ObservationSource
+  public let observedAt: EngineInstant
+  public let confidence: ObservationConfidence
 
-  init(
+  public init(
     value: NormalizedBrightness,
     source: ObservationSource,
     observedAt: EngineInstant,
@@ -195,7 +201,7 @@ struct ObservedBrightness: Equatable, Codable, Sendable {
   }
 }
 
-enum PhysicalControlResourceID: Hashable, Codable, Sendable {
+public enum PhysicalControlResourceID: Hashable, Codable, Sendable {
   case appleNative(String)
   case ioav(String)
   case gamma(RuntimeDisplayID)
@@ -203,15 +209,15 @@ enum PhysicalControlResourceID: Hashable, Codable, Sendable {
   case grouped(String)
 }
 
-struct ConfirmedContinuityTarget: Equatable, Codable, Sendable {
-  let domain: BrightnessControlDomain
-  let method: DisplayControlMethod
-  let resourceID: PhysicalControlResourceID
-  let value: NormalizedBrightness
-  let evidence: ObservationSource
-  let establishedAt: EngineInstant
+public struct ConfirmedContinuityTarget: Equatable, Codable, Sendable {
+  public let domain: BrightnessControlDomain
+  public let method: DisplayControlMethod
+  public let resourceID: PhysicalControlResourceID
+  public let value: NormalizedBrightness
+  public let evidence: ObservationSource
+  public let establishedAt: EngineInstant
 
-  init(
+  public init(
     domain: BrightnessControlDomain,
     method: DisplayControlMethod,
     resourceID: PhysicalControlResourceID,
@@ -229,7 +235,7 @@ struct ConfirmedContinuityTarget: Equatable, Codable, Sendable {
   }
 }
 
-enum ControlFailure: Error, Equatable, Codable, Sendable {
+public enum ControlFailure: Error, Equatable, Codable, Sendable {
   case noService
   case ambiguousServiceMatch
   case readTimeout
@@ -251,7 +257,7 @@ enum ControlFailure: Error, Equatable, Codable, Sendable {
   case terminal
 }
 
-enum BrightnessWriteStatus: Equatable, Codable, Sendable {
+public enum BrightnessWriteStatus: Equatable, Codable, Sendable {
   case idle
   case queued(operationID: EngineOperationID)
   case writing(operationID: EngineOperationID, attempt: Int)
@@ -260,12 +266,12 @@ enum BrightnessWriteStatus: Equatable, Codable, Sendable {
   case failed(operationID: EngineOperationID, failure: ControlFailure, desired: NormalizedBrightness)
 }
 
-enum ControlWriteOutcome: Equatable, Codable, Sendable {
+public enum ControlWriteOutcome: Equatable, Codable, Sendable {
   case acceptedUnverified
   case applied(ObservedBrightness)
 }
 
-enum CapabilityState: String, Codable, Sendable {
+public enum CapabilityState: String, Codable, Sendable {
   case unknown
   case available
   case unavailable
@@ -273,7 +279,7 @@ enum CapabilityState: String, Codable, Sendable {
   case requiresUserWriteValidation
 }
 
-enum CapabilitySource: String, Codable, Sendable {
+public enum CapabilitySource: String, Codable, Sendable {
   case explicitQuery
   case nonMutatingRead
   case topologyEvidence
@@ -281,19 +287,37 @@ enum CapabilitySource: String, Codable, Sendable {
   case qualifiedCompatibilityRecord
 }
 
-enum CapabilityConfidence: String, Codable, Sendable {
+public enum CapabilityConfidence: String, Codable, Sendable {
   case low
   case medium
   case high
   case exact
 }
 
-struct ControlCapabilityEvidence: Equatable, Codable, Sendable {
-  let method: DisplayControlMethod
-  let state: CapabilityState
-  let observedAt: EngineInstant
-  let topologySignature: TopologySignature
-  let source: CapabilitySource
-  let confidence: CapabilityConfidence
-  let failure: ControlFailure?
+public struct ControlCapabilityEvidence: Equatable, Codable, Sendable {
+  public let method: DisplayControlMethod
+  public let state: CapabilityState
+  public let observedAt: EngineInstant
+  public let topologySignature: TopologySignature
+  public let source: CapabilitySource
+  public let confidence: CapabilityConfidence
+  public let failure: ControlFailure?
+
+  public init(
+    method: DisplayControlMethod,
+    state: CapabilityState,
+    observedAt: EngineInstant,
+    topologySignature: TopologySignature,
+    source: CapabilitySource,
+    confidence: CapabilityConfidence,
+    failure: ControlFailure? = nil
+  ) {
+    self.method = method
+    self.state = state
+    self.observedAt = observedAt
+    self.topologySignature = topologySignature
+    self.source = source
+    self.confidence = confidence
+    self.failure = failure
+  }
 }
