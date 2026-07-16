@@ -8,6 +8,8 @@ struct ExternalDisplayItem: Identifiable, Equatable {
   var name: String
   var brightness: Double
   var tier: BrightnessTier
+  var allowedRange: ClosedRange<Double>
+  var controlPreference: BrightnessControlPreference
 
   var tierLabel: String {
     switch tier {
@@ -33,6 +35,7 @@ final class DisplayRouter {
 
   private static let overlayTransitionDuration: TimeInterval = 0.9
   private static let preferencesVersion = "v2"
+  private static let knownDisplayIDsKey = "MyMonitor.v2.knownDisplayIDs"
 
   init() {
     reconfigure()
@@ -53,6 +56,39 @@ final class DisplayRouter {
     return displays
   }
 
+  /// Connected displays first, followed by remembered disconnected displays.
+  var configurationDisplays: [DisplayConfigurationItem] {
+    let connected = displays.map { item in
+      DisplayConfigurationItem(
+        id: item.id,
+        name: item.name,
+        isConnected: true,
+        brightness: item.brightness,
+        allowedRange: item.allowedRange,
+        preference: item.controlPreference,
+        activeTier: item.tier
+      )
+    }
+
+    let connectedIDs = Set(displays.map(\.id))
+    let disconnected = knownDisplayIDs()
+      .filter { !connectedIDs.contains($0) }
+      .map { displayID in
+        DisplayConfigurationItem(
+          id: displayID,
+          name: loadDisplayName(displayID: displayID) ?? "External Display",
+          isConnected: false,
+          brightness: loadBrightness(displayID: displayID),
+          allowedRange: loadBrightnessRange(displayID: displayID),
+          preference: loadControlPreference(displayID: displayID),
+          activeTier: nil
+        )
+      }
+
+    return connected.sorted(by: Self.configurationSort)
+      + disconnected.sorted(by: Self.configurationSort)
+  }
+
   /// Update one display. Drag updates stay in memory; the final value is persisted on release.
   func setBrightness(
     _ value: Double,
@@ -60,20 +96,90 @@ final class DisplayRouter {
     animated: Bool = false,
     persist: Bool = true
   ) {
-    let clamped = min(max(value, 0), 1)
+    let allowedRange = displays.first(where: { $0.id == displayID })?.allowedRange ?? 0...1
+    let clamped = min(
+      max(value, allowedRange.lowerBound),
+      allowedRange.upperBound
+    )
     backends[displayID]?.setBrightness(clamped, animated: animated)
 
     if let index = displays.firstIndex(where: { $0.id == displayID }) {
       displays[index].brightness = clamped
+      rememberDisplay(displayID, name: displays[index].name)
     }
     if persist {
       persistBrightness(clamped, displayID: displayID)
     }
   }
 
-  /// Re-probe only when the set of connected external displays changes.
-  /// Layout and Space changes must not destroy working DDC connections or reset slider state.
-  func reconfigure() {
+  /// Persist and apply new per-display bounds. Tightening a bound is an explicit user action,
+  /// so an out-of-range connected display is moved to the nearest valid brightness immediately.
+  func setBrightnessRange(
+    _ range: ClosedRange<Double>,
+    for displayID: CGDirectDisplayID
+  ) {
+    let lower = min(max(range.lowerBound, 0), 1)
+    let upper = min(max(range.upperBound, 0), 1)
+    let normalized = min(lower, upper)...max(lower, upper)
+
+    persistBrightnessRange(normalized, displayID: displayID)
+    rememberDisplay(
+      displayID,
+      name: displays.first(where: { $0.id == displayID })?.name
+        ?? loadDisplayName(displayID: displayID)
+        ?? "External Display"
+    )
+
+    guard let index = displays.firstIndex(where: { $0.id == displayID }) else { return }
+    displays[index].allowedRange = normalized
+
+    let current = displays[index].brightness
+    let clamped = min(max(current, normalized.lowerBound), normalized.upperBound)
+    if abs(current - clamped) > 0.0001 {
+      setBrightness(clamped, for: displayID, animated: false, persist: true)
+    }
+  }
+
+  /// Persist a requested control strategy. Unsupported forced modes fall back through the
+  /// automatic cascade while the configuration snapshot reports both requested and active modes.
+  func setControlPreference(
+    _ preference: BrightnessControlPreference,
+    for displayID: CGDirectDisplayID
+  ) {
+    persistControlPreference(preference, displayID: displayID)
+    rememberDisplay(
+      displayID,
+      name: displays.first(where: { $0.id == displayID })?.name
+        ?? loadDisplayName(displayID: displayID)
+        ?? "External Display"
+    )
+
+    guard displays.contains(where: { $0.id == displayID }) else { return }
+    reconfigure(force: true)
+  }
+
+  /// Remove all saved values for one display without changing its current physical brightness.
+  func forgetDisplayConfiguration(for displayID: CGDirectDisplayID) {
+    for suffix in [
+      "brightness",
+      "minimumBrightness",
+      "maximumBrightness",
+      "controlPreference",
+      "name",
+      "tier",
+    ] {
+      defaults.removeObject(forKey: prefsKey(suffix, displayID: displayID))
+    }
+    forgetKnownDisplayID(displayID)
+
+    guard let index = displays.firstIndex(where: { $0.id == displayID }) else { return }
+    displays[index].allowedRange = 0...1
+    displays[index].controlPreference = .automatic
+  }
+
+  /// Re-probe only when the set of connected external displays changes unless a user explicitly
+  /// changes the preferred control method.
+  func reconfigure(force: Bool = false) {
     let externalIDs = Set(Self.onlineExternalDisplayIDs())
 
     guard !externalIDs.isEmpty else {
@@ -82,7 +188,7 @@ final class DisplayRouter {
       return
     }
 
-    if externalIDs == Set(backends.keys), !backends.isEmpty {
+    if !force, externalIDs == Set(backends.keys), !backends.isEmpty {
       refreshDisplayNames()
       syncOverlayLayout()
       return
@@ -96,25 +202,37 @@ final class DisplayRouter {
 
     var items: [ExternalDisplayItem] = []
     for displayID in externalIDs.sorted() {
-      let tier = Self.resolveTier(for: displayID)
-      let brightness = loadBrightness(displayID: displayID)
-        ?? Self.currentBrightness(displayID: displayID, tier: tier)
-        ?? 1
+      let preference = loadControlPreference(displayID: displayID)
+      let tier = Self.resolveTier(for: displayID, preference: preference)
+      let allowedRange = loadBrightnessRange(displayID: displayID)
+      let brightness = min(
+        max(
+          loadBrightness(displayID: displayID)
+            ?? Self.currentBrightness(displayID: displayID, tier: tier)
+            ?? 1,
+          allowedRange.lowerBound
+        ),
+        allowedRange.upperBound
+      )
       let backend = Self.makeBackend(
         displayID: displayID,
         tier: tier,
         brightness: brightness
       )
+      let name = Self.displayName(displayID)
 
       backends[displayID] = backend
       items.append(
         ExternalDisplayItem(
           id: displayID,
-          name: Self.displayName(displayID),
+          name: name,
           brightness: brightness,
-          tier: tier
+          tier: tier,
+          allowedRange: allowedRange,
+          controlPreference: preference
         )
       )
+      rememberDisplay(displayID, name: name)
       persistTier(tier, displayID: displayID)
     }
 
@@ -212,14 +330,44 @@ final class DisplayRouter {
 
   // MARK: - Tier cascade
 
-  private static func resolveTier(for displayID: CGDirectDisplayID) -> BrightnessTier {
+  private static func resolveTier(
+    for displayID: CGDirectDisplayID,
+    preference: BrightnessControlPreference
+  ) -> BrightnessTier {
     if shouldUseOverlayForMirror(displayID: displayID) {
       return .overlay
     }
-    if DDCBrightnessBackend.probe(displayID: displayID) {
+
+    switch preference {
+    case .automatic:
+      return resolveAutomaticTier(for: displayID)
+
+    case .hardware:
+      if DDCBrightnessBackend.probe(displayID: displayID) {
+        return .ddc
+      }
+      return resolveAutomaticTier(for: displayID, skipDDC: true)
+
+    case .software:
+      if GammaBrightnessBackend.probe(displayID: displayID) {
+        return .gamma
+      }
+      return resolveAutomaticTier(for: displayID, skipGamma: true)
+
+    case .shade:
+      return .overlay
+    }
+  }
+
+  private static func resolveAutomaticTier(
+    for displayID: CGDirectDisplayID,
+    skipDDC: Bool = false,
+    skipGamma: Bool = false
+  ) -> BrightnessTier {
+    if !skipDDC, DDCBrightnessBackend.probe(displayID: displayID) {
       return .ddc
     }
-    if GammaBrightnessBackend.probe(displayID: displayID) {
+    if !skipGamma, GammaBrightnessBackend.probe(displayID: displayID) {
       return .gamma
     }
     return .overlay
@@ -283,10 +431,18 @@ final class DisplayRouter {
     return "External Display"
   }
 
+  private static func configurationSort(
+    _ lhs: DisplayConfigurationItem,
+    _ rhs: DisplayConfigurationItem
+  ) -> Bool {
+    lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+  }
+
   private func refreshDisplayNames() {
     displays = displays.map { item in
       var updated = item
       updated.name = Self.displayName(item.id)
+      rememberDisplay(updated.id, name: updated.name)
       return updated
     }
   }
@@ -307,8 +463,83 @@ final class DisplayRouter {
     defaults.set(value, forKey: prefsKey("brightness", displayID: displayID))
   }
 
+  private func loadBrightnessRange(
+    displayID: CGDirectDisplayID
+  ) -> ClosedRange<Double> {
+    let minimumKey = prefsKey("minimumBrightness", displayID: displayID)
+    let maximumKey = prefsKey("maximumBrightness", displayID: displayID)
+    let minimum = defaults.object(forKey: minimumKey) == nil
+      ? 0
+      : min(max(defaults.double(forKey: minimumKey), 0), 1)
+    let maximum = defaults.object(forKey: maximumKey) == nil
+      ? 1
+      : min(max(defaults.double(forKey: maximumKey), 0), 1)
+    return min(minimum, maximum)...max(minimum, maximum)
+  }
+
+  private func persistBrightnessRange(
+    _ range: ClosedRange<Double>,
+    displayID: CGDirectDisplayID
+  ) {
+    defaults.set(
+      range.lowerBound,
+      forKey: prefsKey("minimumBrightness", displayID: displayID)
+    )
+    defaults.set(
+      range.upperBound,
+      forKey: prefsKey("maximumBrightness", displayID: displayID)
+    )
+  }
+
+  private func loadControlPreference(
+    displayID: CGDirectDisplayID
+  ) -> BrightnessControlPreference {
+    let rawValue = defaults.string(
+      forKey: prefsKey("controlPreference", displayID: displayID)
+    )
+    return rawValue.flatMap(BrightnessControlPreference.init(rawValue:)) ?? .automatic
+  }
+
+  private func persistControlPreference(
+    _ preference: BrightnessControlPreference,
+    displayID: CGDirectDisplayID
+  ) {
+    defaults.set(
+      preference.rawValue,
+      forKey: prefsKey("controlPreference", displayID: displayID)
+    )
+  }
+
+  private func loadDisplayName(displayID: CGDirectDisplayID) -> String? {
+    defaults.string(forKey: prefsKey("name", displayID: displayID))
+  }
+
   private func persistTier(_ tier: BrightnessTier, displayID: CGDirectDisplayID) {
     defaults.set(tier.rawValue, forKey: prefsKey("tier", displayID: displayID))
+  }
+
+  private func knownDisplayIDs() -> Set<CGDirectDisplayID> {
+    let values = defaults.stringArray(forKey: Self.knownDisplayIDsKey) ?? []
+    return Set(values.compactMap(CGDirectDisplayID.init))
+  }
+
+  private func rememberDisplay(_ displayID: CGDirectDisplayID, name: String) {
+    var values = knownDisplayIDs()
+    values.insert(displayID)
+    defaults.set(
+      values.map(String.init).sorted(),
+      forKey: Self.knownDisplayIDsKey
+    )
+    defaults.set(name, forKey: prefsKey("name", displayID: displayID))
+  }
+
+  private func forgetKnownDisplayID(_ displayID: CGDirectDisplayID) {
+    var values = knownDisplayIDs()
+    values.remove(displayID)
+    defaults.set(
+      values.map(String.init).sorted(),
+      forKey: Self.knownDisplayIDsKey
+    )
   }
 
   // MARK: - Hot-plug, Spaces, and wake
