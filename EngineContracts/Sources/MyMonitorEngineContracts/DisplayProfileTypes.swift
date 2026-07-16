@@ -1,14 +1,12 @@
-import Foundation
+public struct DisplayProfile: Equatable, Codable, Sendable {
+  public let id: PersistentDisplayID
+  public var nameOverride: String?
+  public var desiredBrightness: DesiredBrightnessSet
+  public var allowedRange: ClosedRange<NormalizedBrightness>
+  public var requestedPreference: ControlPreference
+  public var lastKnownMethod: DisplayControlMethod?
 
-struct DisplayProfile: Equatable, Codable, Sendable {
-  let id: PersistentDisplayID
-  var nameOverride: String?
-  var desiredBrightness: DesiredBrightnessSet
-  var allowedRange: ClosedRange<NormalizedBrightness>
-  var requestedPreference: ControlPreference
-  var lastKnownMethod: DisplayControlMethod?
-
-  init(
+  public init(
     id: PersistentDisplayID,
     nameOverride: String? = nil,
     desiredBrightness: DesiredBrightnessSet = DesiredBrightnessSet(),
@@ -25,21 +23,35 @@ struct DisplayProfile: Equatable, Codable, Sendable {
   }
 }
 
-struct DisplayProfileSnapshot: Equatable, Codable, Sendable {
-  let schemaVersion: Int
-  var profiles: [DisplayProfile]
+public struct DisplayProfileSnapshot: Equatable, Codable, Sendable {
+  public let schemaVersion: Int
+  public var profiles: [DisplayProfile]
 
-  init(schemaVersion: Int, profiles: [DisplayProfile]) {
+  public init(schemaVersion: Int, profiles: [DisplayProfile]) {
     precondition(schemaVersion > 0, "Profile schema versions must be positive")
     self.schemaVersion = schemaVersion
     self.profiles = profiles
   }
 }
 
-struct MigrationReport: Equatable, Codable, Sendable {
-  let sourceVersion: Int?
-  let targetVersion: Int
-  let migratedProfileCount: Int
-  let preservedLegacyRecordCount: Int
-  let warnings: [String]
+public struct MigrationReport: Equatable, Codable, Sendable {
+  public let sourceVersion: Int?
+  public let targetVersion: Int
+  public let migratedProfileCount: Int
+  public let preservedLegacyRecordCount: Int
+  public let warnings: [String]
+
+  public init(
+    sourceVersion: Int?,
+    targetVersion: Int,
+    migratedProfileCount: Int,
+    preservedLegacyRecordCount: Int,
+    warnings: [String]
+  ) {
+    self.sourceVersion = sourceVersion
+    self.targetVersion = targetVersion
+    self.migratedProfileCount = migratedProfileCount
+    self.preservedLegacyRecordCount = preservedLegacyRecordCount
+    self.warnings = warnings
+  }
 }
