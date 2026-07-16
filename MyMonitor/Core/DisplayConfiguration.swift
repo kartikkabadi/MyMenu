@@ -3,8 +3,9 @@ import Foundation
 
 /// User-selected control strategy for one external display.
 ///
-/// `automatic` follows the capability cascade. Forced modes are accepted only when the
-/// current connection supports them; display shade is always available as the final fallback.
+/// `automatic` follows the capability cascade. Forced modes are attempted when the display
+/// reconnects or the preference changes; if a connection cannot provide the requested mode,
+/// the router remains usable through its automatic fallback and reports the active tier.
 enum BrightnessControlPreference: String, Codable, CaseIterable, Sendable {
   case automatic
   case hardware
@@ -21,5 +22,4 @@ struct DisplayConfigurationItem: Identifiable, Equatable {
   var allowedRange: ClosedRange<Double>
   var preference: BrightnessControlPreference
   var activeTier: BrightnessTier?
-  var supportedPreferences: Set<BrightnessControlPreference>
 }
