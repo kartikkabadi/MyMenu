@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DDC="$ROOT/MyMonitor/Core/DDCBrightnessBackend.swift"
 ROUTER="$ROOT/MyMonitor/Core/DisplayRouter.swift"
 ADAPTER="$ROOT/MyMonitor/Presentation/DisplayRouterAdapter.swift"
+POLICY="$ROOT/MyMonitor/Presentation/DisplayReconfigurationPolicy.swift"
 
 fail() {
   printf 'Backend concurrency violation: %s\n' "$1" >&2
@@ -19,6 +20,9 @@ if grep -n 'Arm64DDC' "$ROUTER"; then
   fail "DisplayRouter must not call the private DDC transport directly."
 fi
 
+[[ -f "$POLICY" ]] \
+  || fail "The hardware-free reconfiguration policy is missing."
+
 grep -q 'MyMonitor.globalDDC' "$DDC" \
   || fail "DDC operations must stay on the single serialized worker queue."
 grep -q 'writeGeneration' "$DDC" \
@@ -31,12 +35,36 @@ grep -q '\.detecting(cached:' "$ADAPTER" \
   || fail "The adapter must publish cached controls while reconfiguration is in progress."
 grep -q 'DDCBrightnessBackend.probe(displayIDs:' "$ROUTER" \
   || fail "DDC capability discovery must use the asynchronous batch probe."
+grep -q 'DisplayReconfigurationPolicy.resolvedBrightness' "$ROUTER" \
+  || fail "Probe installation must resolve brightness from the latest live state."
+grep -q 'live: displays.first' "$ROUTER" \
+  || fail "A cached slider value must outrank stale persisted and probed snapshots."
+
+if grep -qE 'let (savedBrightness|currentBrightness): Double\?' "$ROUTER"; then
+  fail "Reconfiguration inputs must not freeze mutable brightness snapshots."
+fi
+
+grep -q 'router.handleDisplayTopologyChange()' "$ROUTER" \
+  || fail "Add/remove callbacks must reconcile topology immediately."
+
+topology_body=$(sed -n '/private func handleDisplayTopologyChange()/,/^  }/p' "$ROUTER")
+printf '%s\n' "$topology_body" | grep -q 'removeDisconnectedBackends' \
+  || fail "Topology changes must tear down removed backends immediately."
+printf '%s\n' "$topology_body" | grep -q 'scheduleReconfigure(force: true)' \
+  || fail "Topology changes must debounce only the expensive reprobe."
+
+remove_line=$(printf '%s\n' "$topology_body" | grep -n 'removeDisconnectedBackends' | head -1 | cut -d: -f1)
+schedule_line=$(printf '%s\n' "$topology_body" | grep -n 'scheduleReconfigure(force: true)' | head -1 | cut -d: -f1)
+if (( remove_line >= schedule_line )); then
+  fail "Removed resources must be released before the reprobe is scheduled."
+fi
+
 grep -q 'private func restartProbeIfNeeded' "$ADAPTER" \
-  || fail "Committed settings must be able to invalidate an older probe generation."
+  || fail "Tier-expanding configuration resets must invalidate an older probe generation."
 
 restart_calls=$(grep -c 'restartProbeIfNeeded()' "$ADAPTER")
-if (( restart_calls < 5 )); then
-  fail "Brightness, range, forget, and reset actions must all protect against stale probes."
+if (( restart_calls < 3 )); then
+  fail "Forget and reset actions must protect capability discovery from stale eligibility."
 fi
 
 printf 'Backend concurrency validation passed.\n'
