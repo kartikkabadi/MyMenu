@@ -2,12 +2,13 @@
 from pathlib import Path
 
 
-def replace_once(path: Path, old: str, new: str) -> None:
+def replace_once(path: Path, old: str, new: str, label: str) -> None:
     text = path.read_text()
     count = text.count(old)
     if count != 1:
-        raise RuntimeError(f"Expected one match in {path}, found {count}")
+        raise RuntimeError(f"{label}: expected one match in {path}, found {count}")
     path.write_text(text.replace(old, new, 1))
+    print(f"Applied: {label}")
 
 
 router = Path("MyMonitor/Core/DisplayRouter.swift")
@@ -34,7 +35,7 @@ replace_once(
       }
     )
     let presentationIDs = DisplayReconfigurationPolicy.presentationIDs(
-      connected: displays.map(\\.id),
+      connected: displays.map(\.id),
       mirrored: mirroredIDs,
       isFullMirror: Self.isMirrorMode
     )
@@ -43,18 +44,28 @@ replace_once(
     }
   }
 ''',
+    "mirror presentation",
 )
 
 replace_once(
     router,
-    '''    for displayID in gammaHoldDisplayIDs {
+    '''  private func teardownInstalledBackends() {
+    overlayTransitionEndWorkItem?.cancel()
+    overlayTransitionEndWorkItem = nil
+
+    for displayID in gammaHoldDisplayIDs {
       DisplayGamma.releaseHold(displayID: displayID, includeBuiltin: true)
     }
     gammaHoldDisplayIDs.removeAll()
 ''',
-    '''    DisplayGamma.releaseHolds(gammaHoldDisplayIDs, includeBuiltin: true)
+    '''  private func teardownInstalledBackends() {
+    overlayTransitionEndWorkItem?.cancel()
+    overlayTransitionEndWorkItem = nil
+
+    DisplayGamma.releaseHolds(gammaHoldDisplayIDs, includeBuiltin: true)
     gammaHoldDisplayIDs.removeAll()
 ''',
+    "batched teardown hold release",
 )
 
 replace_once(
@@ -67,6 +78,7 @@ replace_once(
     overlayTransitionEndWorkItem?.cancel()
     beginOverlaySpaceTransition()
 ''',
+    "overlay timer ordering",
 )
 
 replace_once(
@@ -81,6 +93,7 @@ replace_once(
     DisplayGamma.releaseHolds(gammaHoldDisplayIDs, includeBuiltin: true)
     gammaHoldDisplayIDs.removeAll()
 ''',
+    "batched transition hold release",
 )
 
 replace_once(
@@ -111,6 +124,7 @@ replace_once(
     return mirrored.isEmpty ? [displayID] : mirrored
   }
 ''',
+    "true mirror detection",
 )
 
 replace_once(
@@ -125,6 +139,7 @@ replace_once(
       Task { @MainActor in self?.reconfigure(force: true) }
     }
 ''',
+    "immediate wake generation",
 )
 
 replace_once(
@@ -149,6 +164,7 @@ replace_once(
 
     let externalIDs = Set(Self.onlineExternalDisplayIDs())
 ''',
+    "topology transition cleanup",
 )
 
 replace_once(
@@ -197,6 +213,7 @@ replace_once(
     }
   }
 ''',
+    "IORegistry iterator ownership",
 )
 
 replace_once(
@@ -208,6 +225,7 @@ replace_once(
     defer { cpath.deallocate() }
     IORegistryEntryGetPath(entry, kIOServicePlane, cpath)
 ''',
+    "IORegistry path buffer ownership",
 )
 
 replace_once(
@@ -231,6 +249,7 @@ replace_once(
       }
       IOObjectRelease(objectOfInterest.entry)
 ''',
+    "matched IORegistry object ownership",
 )
 
 print("Applied router and IOKit lifecycle fixes.")
