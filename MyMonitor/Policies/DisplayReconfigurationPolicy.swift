@@ -1,11 +1,9 @@
 import Foundation
 
-/// Pure policy used when an asynchronous display probe is installed.
-///
-/// Values may change while hardware discovery is running. Installation therefore prefers the
-/// current in-memory value over persisted or probed snapshots, then clamps against the latest
-/// configured range.
+/// Pure policies used while asynchronous display discovery is reconciled with live UI state.
 enum DisplayReconfigurationPolicy {
+  /// Installation prefers the current in-memory value over persisted or probed snapshots, then
+  /// clamps against the latest configured range.
   static func resolvedBrightness(
     live: Double?,
     persisted: Double?,
@@ -24,5 +22,20 @@ enum DisplayReconfigurationPolicy {
     online: Set<ID>
   ) -> Set<ID> {
     installed.subtracting(online)
+  }
+
+  /// Collapse only a fully mirrored topology. Partial mirroring must retain unrelated extended
+  /// displays instead of hiding them from the popover.
+  static func presentationIDs<ID: Hashable>(
+    connected: [ID],
+    mirrored: Set<ID>,
+    isFullMirror: Bool
+  ) -> [ID] {
+    guard isFullMirror,
+      let representative = connected.first(where: mirrored.contains)
+    else {
+      return connected
+    }
+    return [representative]
   }
 }
