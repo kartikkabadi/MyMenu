@@ -33,6 +33,7 @@ let package = Package(
         "KeyboardShortcutController.swift",
         "DiagnosticReport.swift",
         "DisplayReconfigurationPolicy.swift",
+        "GammaHoldRegistry.swift",
       ]
     ),
     .testTarget(
