@@ -19,6 +19,9 @@ final class DisplayPresentationStore {
   @ObservationIgnored
   private var optimisticBrightness: [MonitorID: Double] = [:]
 
+  @ObservationIgnored
+  private var stableMonitorOrder: [MonitorID] = []
+
   init(controller: any MonitorControlling) {
     self.controller = controller
     state = .detecting(cached: [])
@@ -110,14 +113,15 @@ final class DisplayPresentationStore {
     _ snapshots: [MonitorSnapshot],
     acknowledgeWrites: Bool
   ) -> [MonitorPresentation] {
-    let incomingIDs = Set(snapshots.map(\.id))
+    let orderedSnapshots = stabilizeOrder(of: snapshots)
+    let incomingIDs = Set(orderedSnapshots.map(\.id))
     optimisticBrightness = optimisticBrightness.filter { incomingIDs.contains($0.key) }
     activeAdjustments = activeAdjustments.filter { incomingIDs.contains($0) }
 
     var presentations: [MonitorPresentation] = []
-    presentations.reserveCapacity(snapshots.count)
+    presentations.reserveCapacity(orderedSnapshots.count)
 
-    for snapshot in snapshots {
+    for snapshot in orderedSnapshots {
       let override = optimisticBrightness[snapshot.id]
       let isActive = activeAdjustments.contains(snapshot.id)
       let isAcknowledged = acknowledgeWrites
@@ -137,6 +141,26 @@ final class DisplayPresentationStore {
     }
 
     return presentations
+  }
+
+  private func stabilizeOrder(of snapshots: [MonitorSnapshot]) -> [MonitorSnapshot] {
+    for snapshot in snapshots where !stableMonitorOrder.contains(snapshot.id) {
+      stableMonitorOrder.append(snapshot.id)
+    }
+
+    let order = Dictionary(
+      uniqueKeysWithValues: stableMonitorOrder.enumerated().map { ($1, $0) }
+    )
+
+    return snapshots.enumerated().sorted { lhs, rhs in
+      let leftOrder = order[lhs.element.id] ?? Int.max
+      let rightOrder = order[rhs.element.id] ?? Int.max
+
+      if leftOrder == rightOrder {
+        return lhs.offset < rhs.offset
+      }
+      return leftOrder < rightOrder
+    }.map(\.element)
   }
 
   private func valuesMatch(_ snapshot: Double?, _ optimistic: Double?) -> Bool {
