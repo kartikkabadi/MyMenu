@@ -26,6 +26,9 @@ let package = Package(
         "DisplayPresentationStore.swift",
         "MonitorPresentationFixtures.swift",
         "LaunchAtLoginController.swift",
+        "DisplayConfigurationPresentation.swift",
+        "DisplayConfigurationControlling.swift",
+        "DisplayConfigurationStore.swift",
       ]
     ),
     .testTarget(

@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   static private(set) var shared: AppDelegate!
 
   private let presentationStore: DisplayPresentationStore
+  private let configurationStore: DisplayConfigurationStore
   private let launchAtLoginController: LaunchAtLoginController
   private var statusItem: NSStatusItem!
   private var popoverController: PopoverWindowController!
@@ -15,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let router = DisplayRouter()
     let controller = DisplayRouterAdapter(router: router)
     presentationStore = DisplayPresentationStore(controller: controller)
+    configurationStore = DisplayConfigurationStore(controller: controller)
     launchAtLoginController = LaunchAtLoginController(
       service: SystemLaunchAtLoginService()
     )
@@ -26,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     popoverController = PopoverWindowController(store: presentationStore)
     settingsController = SettingsWindowController(
       store: presentationStore,
+      configurationStore: configurationStore,
       launchAtLoginController: launchAtLoginController
     )
 
