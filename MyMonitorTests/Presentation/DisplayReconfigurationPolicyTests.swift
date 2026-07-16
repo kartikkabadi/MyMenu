@@ -76,4 +76,37 @@ final class DisplayReconfigurationPolicyTests: XCTestCase {
       Set([1002])
     )
   }
+
+  func testPartialMirrorKeepsUnrelatedExtendedDisplaysVisible() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.presentationIDs(
+        connected: [1001, 1002],
+        mirrored: Set([1001]),
+        isFullMirror: false
+      ),
+      [1001, 1002]
+    )
+  }
+
+  func testFullMirrorCollapsesToOneStableRepresentative() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.presentationIDs(
+        connected: [1002, 1001],
+        mirrored: Set([1001, 1002]),
+        isFullMirror: true
+      ),
+      [1002]
+    )
+  }
+
+  func testFalseFullMirrorSignalDoesNotCollapseWithoutMirroredDisplay() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.presentationIDs(
+        connected: [1001, 1002],
+        mirrored: [],
+        isFullMirror: true
+      ),
+      [1001, 1002]
+    )
+  }
 }
