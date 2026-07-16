@@ -63,15 +63,24 @@ The probe result carries the already validated service and luminance range into 
 
 ## Gamma replacement and ColorSync
 
-Gamma backends keep an owner token and current brightness for every active display. A stale backend teardown cannot release the curve installed by its replacement.
+Gamma backends retain an owner token per display. A stale backend teardown cannot release the curve installed by its replacement.
 
-`CGDisplayRestoreColorSyncSettings()` is process-global rather than display-scoped. Probe cleanup and active-owner teardown therefore follow one guarded operation:
+`CGDisplayRestoreColorSyncSettings()` is process-global rather than display-scoped. Persistent gamma controls and temporary mirror/Space stabilization holds therefore share one `GammaHoldRegistry`. Probe cleanup and active-owner teardown follow one guarded operation:
 
 1. restore the system ColorSync calibration;
-2. remove the backend that is actually ending, when applicable;
-3. immediately reapply the brightness curve for every gamma display that remains active.
+2. remove only the hold whose active owner is actually ending, when applicable;
+3. immediately replay every persistent and temporary gamma hold that remains registered.
 
-This restores the removed display correctly without brightening another gamma-controlled display. A stale owner performs neither the global restore nor reapplication.
+This restores the removed display correctly without brightening another gamma-controlled display or dropping an in-flight mirror/Space hold. A stale owner performs neither the global restore nor replay.
+
+## Hardware-free policies
+
+Mutable installation and replay rules live in the small `MyMonitorPolicies` SwiftPM target rather than in UI or hardware code:
+
+- `DisplayReconfigurationPolicy` defines live/persisted/probed brightness precedence and topology subtraction;
+- `GammaHoldRegistry` owns independent normalized brightness values for all active holds.
+
+The app target compiles these policies as internal source, while SwiftPM exercises them without Core Graphics, IOAV, AppKit windows, or a connected monitor.
 
 ## Automated gates
 
@@ -84,14 +93,20 @@ This restores the removed display correctly without brightening another gamma-co
 - the latest range clamps installation;
 - removed display IDs are derived from installed and online sets.
 
+`GammaHoldRegistryTests` verify:
+
+- multiple displays retain independent brightness values;
+- replacing one hold does not alter another;
+- removing one hold preserves every other hold;
+- values remain normalized to `0...1`.
+
 `scripts/validate_backend_concurrency.sh` verifies:
 
 - no synchronous dispatch in the DDC transport;
 - private DDC APIs remain outside `DisplayRouter`;
-- the serialized worker queue remains present;
-- latest-value write generations remain present;
-- gamma owner and brightness state remain present;
-- global ColorSync restoration is paired with reapplication of every active gamma display;
+- the serialized worker queue and latest-write generations remain present;
+- gamma owner and shared hold-replay state remain present;
+- global ColorSync restoration is paired with replay of every active gamma and mirror hold;
 - router reconfiguration generations remain present;
 - asynchronous detecting state remains exposed;
 - the adapter continues to publish cached detecting state;
@@ -101,7 +116,15 @@ This restores the removed display correctly without brightening another gamma-co
 - disconnected resources are removed before the reprobe is scheduled;
 - forget and reset can still restart capability discovery when eligibility changes.
 
-CI runs this alongside presentation tests, the frontend contract, project regeneration, Debug build, Release build, and whitespace validation.
+CI additionally enforces:
+
+- SwiftPM tests with warnings as errors;
+- the frontend contract;
+- deterministic Xcode project regeneration with zero committed-project drift;
+- Xcode 26.3 arm64 Debug and Release builds with Swift warnings as errors;
+- whitespace validity.
+
+The committed `MyMonitor.xcodeproj` is therefore the exact output of `scripts/generate_xcodeproj.sh`; opening the repository locally and building in CI use the same source graph.
 
 ## Required hardware validation
 
@@ -137,6 +160,7 @@ CI runs this alongside presentation tests, the frontend contract, project regene
 - One DDC display plus one shade display.
 - Two simultaneous gamma displays at different brightness levels.
 - Probe or remove one gamma display and confirm the other curve is immediately preserved.
+- Trigger a mirror/Space hold while restoring ColorSync and confirm the temporary hold is replayed.
 - Forced Hardware when DDC is unavailable.
 - Forced Software when gamma is unavailable.
 - Switch Gamma → Gamma, Gamma → DDC, and Gamma → Shade and confirm ColorSync calibration and remaining active curves stay correct.
