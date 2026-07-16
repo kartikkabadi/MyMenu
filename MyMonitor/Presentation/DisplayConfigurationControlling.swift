@@ -20,4 +20,5 @@ protocol DisplayConfigurationControlling: AnyObject {
   )
 
   func forgetConfiguration(for monitorID: MonitorID)
+  func resetAllConfigurations()
 }
