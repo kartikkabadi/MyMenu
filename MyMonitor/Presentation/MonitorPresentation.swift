@@ -3,7 +3,7 @@ import Foundation
 /// Stable frontend identity for one externally controlled display.
 ///
 /// The presentation layer deliberately does not expose Core Graphics display types.
-struct MonitorID: Hashable, RawRepresentable, Sendable {
+struct MonitorID: Hashable, RawRepresentable, Codable, Sendable {
   let rawValue: UInt32
 
   init(rawValue: UInt32) {

@@ -24,11 +24,13 @@ let package = Package(
         "MonitorPresentation.swift",
         "MonitorControlling.swift",
         "DisplayPresentationStore.swift",
+        "DisplayPresentationStore+Keyboard.swift",
         "MonitorPresentationFixtures.swift",
         "LaunchAtLoginController.swift",
         "DisplayConfigurationPresentation.swift",
         "DisplayConfigurationControlling.swift",
         "DisplayConfigurationStore.swift",
+        "KeyboardShortcutController.swift",
       ]
     ),
     .testTarget(
