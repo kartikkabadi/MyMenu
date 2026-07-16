@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: finalize-pr20-landing
+  group: finalize-pr20-landing-v2
   cancel-in-progress: false
 
 jobs:
@@ -33,24 +33,25 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
 
           store = Path("MyMonitor/Presentation/DisplayPresentationStore.swift")
           text = store.read_text()
-          old = """    case .failed(let message, let canRetry):
-                state = .failed(
-          """
-          new = """    case .failed(let message, let canRetry):
-                activeAdjustments.removeAll()
-                optimisticBrightness.removeAll()
-                state = .failed(
-          """
+          old = "    case .failed(let message, let canRetry):\n      state = .failed("
+          new = (
+              "    case .failed(let message, let canRetry):\n"
+              "      activeAdjustments.removeAll()\n"
+              "      optimisticBrightness.removeAll()\n"
+              "      state = .failed("
+          )
           assert text.count(old) == 1, text.count(old)
           store.write_text(text.replace(old, new, 1))
 
           tests = Path("MyMonitorTests/Presentation/DisplayPresentationStoreTests.swift")
           text = tests.read_text()
           anchor = "  func testRemovingMonitorClearsItsOptimisticValue() {\n"
-          added = """  func testFailedSnapshotClearsOptimisticStateBeforeRecovery() {
+          added = dedent('''\
+            func testFailedSnapshotClearsOptimisticStateBeforeRecovery() {
               let monitorID = MonitorPresentationFixtures.studioDisplayID
               let controller = FakeMonitorController(
                 snapshot: MonitorPresentationFixtures.oneHardwareDisplay
@@ -79,38 +80,30 @@ jobs:
               XCTAssertEqual(controller.teardownCount, 1)
             }
 
-          """
+          ''')
           assert text.count(anchor) == 1, text.count(anchor)
           tests.write_text(text.replace(anchor, added + anchor, 1))
 
           bug = Path(".github/ISSUE_TEMPLATE/bug_report.yml")
           text = bug.read_text()
-          text = text.replace(
-              "Report a reproducible problem with MyMenu",
-              "Report a reproducible problem with MyMonitor",
-          )
-          text = text.replace(
-              """  - type: textarea
-              id: permissions
-              attributes:
-                label: Permissions and tier
-                description: State whether Accessibility or Screen Recording is enabled and which brightness tier is shown.
-          """,
-              """  - type: textarea
-              id: control
-              attributes:
-                label: Control method and diagnostics
-                description: Include the active method shown by MyMonitor (Hardware, Software, or Display shade) and any relevant diagnostic summary.
-          """,
-          )
-          assert "MyMenu" not in text
-          assert "Accessibility or Screen Recording" not in text
+          replacements = [
+              ("Report a reproducible problem with MyMenu", "Report a reproducible problem with MyMonitor"),
+              ("    id: permissions", "    id: control"),
+              ("      label: Permissions and tier", "      label: Control method and diagnostics"),
+              (
+                  "      description: State whether Accessibility or Screen Recording is enabled and which brightness tier is shown.",
+                  "      description: Include the active method shown by MyMonitor (Hardware, Software, or Display shade) and any relevant diagnostic summary.",
+              ),
+          ]
+          for old_text, new_text in replacements:
+              assert text.count(old_text) == 1, (old_text, text.count(old_text))
+              text = text.replace(old_text, new_text, 1)
           bug.write_text(text)
 
           feature = Path(".github/ISSUE_TEMPLATE/feature_request.yml")
-          text = feature.read_text().replace("MyMenu", "MyMonitor")
-          assert "MyMenu" not in text
-          feature.write_text(text)
+          text = feature.read_text()
+          assert text.count("MyMenu") == 2, text.count("MyMenu")
+          feature.write_text(text.replace("MyMenu", "MyMonitor"))
           PY
 
       - name: Select Xcode 26.3
