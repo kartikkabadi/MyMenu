@@ -63,9 +63,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     guard let button = statusItem.button else { return }
 
+    let appName = String(localized: "MyMonitor")
+    let accessibilityHelp = String(
+      localized: "Open external display brightness controls."
+    )
     let image = NSImage(
       systemSymbolName: "display",
-      accessibilityDescription: "MyMonitor"
+      accessibilityDescription: appName
     )
     image?.isTemplate = true
     button.image = image
@@ -73,7 +77,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     button.target = self
     button.action = #selector(togglePopover(_:))
     button.sendAction(on: [.leftMouseUp])
-    button.toolTip = "MyMonitor"
+    button.toolTip = appName
+    button.setAccessibilityLabel(appName)
+    button.setAccessibilityHelp(accessibilityHelp)
+    button.setAccessibilityIdentifier("mymonitor.statusItem")
   }
 
   @objc private func togglePopover(_ sender: AnyObject?) {
