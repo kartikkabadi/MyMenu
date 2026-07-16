@@ -1,0 +1,77 @@
+name: Build MyMonitor
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - rescue/monitor-only-core
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Tests, contracts, project drift, and Xcode 26 builds
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
+
+      - name: Test Swift packages with warnings as errors
+        run: swift test -Xswiftc -warnings-as-errors
+
+      - name: Validate frontend contract
+        run: bash scripts/validate_frontend_contract.sh
+
+      - name: Validate backend concurrency
+        run: bash scripts/validate_backend_concurrency.sh
+
+      - name: Generate project
+        run: ./scripts/generate_xcodeproj.sh
+
+      - name: Verify generated project is committed
+        run: git diff --exit-code -- MyMonitor.xcodeproj/project.pbxproj
+
+      - name: Build Debug with warnings as errors
+        run: |
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Debug \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Debug \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
+
+      - name: Build Release with warnings as errors
+        run: |
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Release \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Release \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
+
+      - name: Check whitespace
+        run: git diff --check

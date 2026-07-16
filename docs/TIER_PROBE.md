@@ -12,7 +12,7 @@ The exact tier depends on the Mac, monitor, cable, adapter, display mode, and mo
 
 ## Runtime probe
 
-MyMenu probes at display connect:
+MyMonitor probes at display connect:
 
 1. `DDCBrightnessBackend.probe` — Arm64DDC read luminance  
 2. `GammaBrightnessBackend.probe` — apply + verify transfer  

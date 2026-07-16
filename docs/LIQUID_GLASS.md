@@ -1,6 +1,6 @@
 # Interface notes
 
-MyMenu uses an AppKit status item and `NSPopover` so the menu bar experience stays lightweight and can recreate the SwiftUI content on each open.
+MyMonitor uses an AppKit status item and a keyable panel so the menu bar experience stays lightweight and can recreate the SwiftUI content on each open.
 
 ## Panel behavior
 

@@ -1,0 +1,148 @@
+import XCTest
+@testable import MyMonitorPolicies
+
+final class DisplayReconfigurationPolicyTests: XCTestCase {
+  func testLiveBrightnessWinsOverStalePersistedAndProbedValues() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.resolvedBrightness(
+        live: 0.82,
+        persisted: 0.41,
+        probed: 0.27,
+        allowedRange: 0...1
+      ),
+      0.82,
+      accuracy: 0.0001
+    )
+  }
+
+  func testPersistedBrightnessWinsWhenNoLiveRowExists() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.resolvedBrightness(
+        live: nil,
+        persisted: 0.63,
+        probed: 0.27,
+        allowedRange: 0...1
+      ),
+      0.63,
+      accuracy: 0.0001
+    )
+  }
+
+  func testProbedBrightnessSeedsFirstRun() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.resolvedBrightness(
+        live: nil,
+        persisted: nil,
+        probed: 0.46,
+        allowedRange: 0...1
+      ),
+      0.46,
+      accuracy: 0.0001
+    )
+  }
+
+  func testMissingValuesDefaultToFullBrightness() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.resolvedBrightness(
+        live: nil,
+        persisted: nil,
+        probed: nil,
+        allowedRange: 0...1
+      ),
+      1,
+      accuracy: 0.0001
+    )
+  }
+
+  func testLatestConfiguredRangeClampsInstalledValue() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.resolvedBrightness(
+        live: 0.91,
+        persisted: nil,
+        probed: nil,
+        allowedRange: 0.2...0.75
+      ),
+      0.75,
+      accuracy: 0.0001
+    )
+  }
+
+  func testRemovedIDsAreComputedImmediatelyFromInstalledAndOnlineSets() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.removedIDs(
+        installed: Set([1001, 1002, 1003]),
+        online: Set([1001, 1003, 1004])
+      ),
+      Set([1002])
+    )
+  }
+
+  func testPartialMirrorKeepsUnrelatedExtendedDisplaysVisible() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.presentationIDs(
+        connected: [1001, 1002],
+        mirrored: Set([1001]),
+        isFullMirror: false
+      ),
+      [1001, 1002]
+    )
+  }
+
+  func testFullMirrorCollapsesToOneStableRepresentative() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.presentationIDs(
+        connected: [1002, 1001],
+        mirrored: Set([1001, 1002]),
+        isFullMirror: true
+      ),
+      [1002]
+    )
+  }
+
+  func testFalseFullMirrorSignalDoesNotCollapseWithoutMirroredDisplay() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.presentationIDs(
+        connected: [1001, 1002],
+        mirrored: [],
+        isFullMirror: true
+      ),
+      [1001, 1002]
+    )
+  }
+
+  func testFullMirrorRepresentativeControlsEveryExternalMirrorMember() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.controlIDs(
+        connected: [1002, 1001, 1003],
+        mirrored: Set([1001, 1002]),
+        selected: 1002,
+        isFullMirror: true
+      ),
+      [1002, 1001]
+    )
+  }
+
+  func testPartialMirrorControlRemainsScopedToSelectedDisplay() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.controlIDs(
+        connected: [1001, 1002, 1003],
+        mirrored: Set([1001, 1002]),
+        selected: 1001,
+        isFullMirror: false
+      ),
+      [1001]
+    )
+  }
+
+  func testNonMirroredSelectionNeverFansOut() {
+    XCTAssertEqual(
+      DisplayReconfigurationPolicy.controlIDs(
+        connected: [1001, 1002, 1003],
+        mirrored: Set([1001, 1002]),
+        selected: 1003,
+        isFullMirror: true
+      ),
+      [1003]
+    )
+  }
+}

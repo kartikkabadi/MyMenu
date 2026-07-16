@@ -1,85 +1,58 @@
-# MyMenu
+# MyMonitor
 
-MyMenu is a small macOS menu bar utility for controlling the brightness of external displays. It uses the best available control path for each display and keeps the built-in display untouched.
+MyMonitor is a focused, native macOS menu-bar app for controlling external-display brightness.
 
-> Early open-source release. External-display brightness is the stable core. Window snapping and the Alt-Tab switcher are included as experimental features and depend on macOS privacy permissions.
+It has one job: detect connected monitors, choose the best available control method, and make brightness adjustment feel like a built-in macOS control.
 
-## What it does
+## Product scope
 
-- **Hardware brightness (DDC/CI):** writes the monitor's luminance value when the display and connection expose DDC.
-- **Software gamma:** applies a per-display gamma multiplier when hardware brightness is unavailable.
-- **Screen overlay:** dims the external display with a translucent overlay as a reliable fallback, including common HDMI-dongle setups.
-- **Recording preview:** temporarily adds a visible overlay so dimming is present in screen recordings even when the active tier is gamma or hardware brightness.
-- **Window snapping (experimental):** `Control-Option-Left/Right` snaps the focused window to a half and `Control-Option-Up/Down` maximizes or centers it.
-- **Window switcher (experimental):** `Option-Tab` and `Option-Shift-Tab` cycle through visible windows and select on Option release.
+- **Per-monitor brightness** for every connected external display.
+- **Hardware DDC/CI** when the monitor and connection support it.
+- **Software gamma** when hardware control is unavailable.
+- **Display shade fallback** for connections such as HDMI dongles that expose neither DDC nor usable gamma control.
+- **Local-only preferences** in `UserDefaults`.
 
-The app does not use an account, network service, analytics, or cloud storage. Display preferences are stored locally in `UserDefaults`.
+MyMonitor does not include window management, an Alt-Tab replacement, accounts, analytics, cloud storage, or network services.
+
+## Frontend specification
+
+The canonical native macOS frontend contract lives in [`docs/frontend/`](docs/frontend/README.md). It includes the research basis, full popover and Settings interaction specification, native component/design rules, binding decisions, sequential implementation tickets, and objective QA matrix.
+
+Frontend work must follow that contract one ticket at a time. It must use real macOS components and system behavior rather than custom glass cards, fixed visual styling, or placeholder features.
 
 ## Requirements
 
 - macOS **26.0 or later**
+- Apple Silicon Mac
 - Xcode **26** for development
-- An external display for brightness control
+- At least one external display
 
-DDC support is implemented for Apple Silicon through the adapted MonitorControl bridge. Gamma and overlay fallbacks can still be used when DDC is unavailable.
+The DDC path uses private macOS display interfaces adapted from MonitorControl. It may require maintenance after macOS updates. The gamma and display-shade tiers remain available when DDC is unsupported.
 
-The DDC path uses private macOS display interfaces, so it may need maintenance after future macOS updates. MyMenu does not bypass macOS privacy controls.
-
-## Build and run
+## Build from source
 
 ```bash
-git clone https://github.com/kartikkabadi/MyMenu.git
-cd MyMenu
+git clone https://github.com/kartikkabadi/MyMonitor.git
+cd MyMonitor
+./scripts/build.sh
+```
+
+Or generate and open the Xcode project:
+
+```bash
 ./scripts/generate_xcodeproj.sh
-open MyMenu.xcodeproj
+open MyMonitor.xcodeproj
 ```
 
-Select the `MyMenu` scheme and run it from Xcode. For a local Release package:
+The native app target has no package-manager dependencies. Swift files under `MyMonitor/` are discovered by `scripts/generate_xcodeproj.sh`.
+
+## Validation
 
 ```bash
-./scripts/package-local.sh
-```
-
-The package script creates `dist/MyMenu.zip` and, when available, `dist/MyMenu.dmg`. Local builds are ad hoc signed and are not notarized. Open a locally built app from Finder with Control-click → **Open** if macOS asks for confirmation.
-
-## Privacy permissions
-
-Brightness control does not require special privacy permissions. The optional window features do:
-
-- **Accessibility:** required to move, resize, and focus windows.
-- **Screen Recording:** required for macOS to provide the window list used by the switcher.
-
-Enable each feature in the MyMenu panel, then follow the macOS prompt. If a permission was granted after the app was running, bring MyMenu to the front or restart it so the status refreshes.
-
-### Recording a demo
-
-Screen recording captures macOS-rendered pixels. Hardware brightness and gamma can change the physical display after those pixels are captured, so a recording may look unchanged even while the monitor visibly dims. Enable **Show Dimming in Recordings** in the MyMenu panel before recording. MyMenu adds a capture-visible overlay for the session; disable it afterward for normal brightness behavior.
-
-For a repeatable demo launch, the same mode can be enabled without clicking the panel:
-
-```bash
-MYMENU_SCREEN_RECORDING_PREVIEW=1 /Applications/MyMenu.app/Contents/MacOS/MyMenu
-```
-
-## Display behavior
-
-For each external display, MyMenu probes these tiers in order:
-
-1. DDC/CI hardware luminance
-2. Software gamma
-3. Screen overlay
-
-USB-C → HDMI adapters often do not pass DDC/CI. That is expected; MyMenu should fall back to the overlay tier. For hardware control, enable DDC/CI in the monitor's on-screen display and try a direct USB-C/DisplayPort connection.
-
-## Development
-
-The project is intentionally dependency-free. Swift sources are discovered by `scripts/generate_xcodeproj.sh`, so adding a Swift file under `MyMenu/` is enough for the generated project to include it.
-
-Useful local checks:
-
-```bash
-xcodebuild -project MyMenu.xcodeproj \
-  -scheme MyMenu \
+./scripts/generate_xcodeproj.sh
+xcodebuild \
+  -project MyMonitor.xcodeproj \
+  -scheme MyMonitor \
   -configuration Debug \
   -sdk macosx \
   -derivedDataPath build/DerivedData \
@@ -88,12 +61,20 @@ xcodebuild -project MyMenu.xcodeproj \
 git diff --check
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and [SECURITY.md](SECURITY.md) for responsible security reports.
+Every pull request is also built with Xcode 26 in GitHub Actions.
 
-## Third-party code
+Brightness behavior must be tested on real hardware because DDC support depends on the monitor, cable, dock, and adapter. Useful bug reports include the Mac model, macOS version, monitor model, connection path, selected control tier, and exact reproduction steps.
 
-DDC support is adapted from [MonitorControl](https://github.com/MonitorControl/MonitorControl) under the MIT License. The attribution and license text are in [MyMenu/ThirdParty/README.md](MyMenu/ThirdParty/README.md).
+## Distribution status
 
-## License
+Current builds are development artifacts. A public release should be Developer ID signed, notarized, stapled, and accepted by Gatekeeper. MyMonitor must not remove macOS quarantine metadata to bypass that trust path.
 
-MyMenu is released under the [MIT License](LICENSE). Third-party components retain their original licenses and notices.
+## Privacy
+
+Brightness control requires no Accessibility or Screen Recording permission. MyMonitor does not transmit display information or usage data.
+
+## Third-party code and license
+
+DDC support is adapted from [MonitorControl](https://github.com/MonitorControl/MonitorControl) under the MIT License. Attribution and license text are in [MyMonitor/ThirdParty/README.md](MyMonitor/ThirdParty/README.md).
+
+MyMonitor is released under the [MIT License](LICENSE). Third-party components retain their original licenses and notices.

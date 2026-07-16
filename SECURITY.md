@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest `main` branch is currently supported because MyMenu is an early open-source release.
+Only the latest `main` branch is currently supported because MyMonitor is an early open-source release.
 
 ## Reporting a vulnerability
 
@@ -17,4 +17,4 @@ Do not include API keys, access tokens, personal data, private window titles, or
 
 ## Privacy expectations
 
-MyMenu is designed to run locally. It has no account, analytics, or cloud backend. The window features use macOS Accessibility and Screen Recording APIs only when enabled by the user. Please report any unexpected network activity or persistence of window contents as a security issue.
+MyMonitor is designed to run locally. It has no account, analytics, or cloud backend. The window features use macOS Accessibility and Screen Recording APIs only when enabled by the user. Please report any unexpected network activity or persistence of window contents as a security issue.
