@@ -138,6 +138,24 @@ final class KeyboardShortcutControllerTests: XCTestCase {
     XCTAssertEqual(persistence.savedConfigurations.last?.target, .display(monitorID))
   }
 
+  func testForgettingSelectedDisplayTargetFallsBackToPointerAndPersists() {
+    let monitorID = MonitorID(rawValue: 88)
+    let initial = KeyboardShortcutConfiguration(
+      decreaseShortcut: decreaseShortcut,
+      increaseShortcut: increaseShortcut,
+      target: .display(monitorID)
+    )
+    let service = FakeGlobalHotKeyService()
+    let persistence = FakeKeyboardShortcutPersistence(configuration: initial)
+    let controller = KeyboardShortcutController(service: service, persistence: persistence)
+
+    controller.forgetDisplayTarget(monitorID)
+
+    XCTAssertEqual(controller.configuration.target, .displayUnderPointer)
+    XCTAssertEqual(persistence.savedConfigurations.last?.target, .displayUnderPointer)
+    XCTAssertEqual(service.registrations, initial.registrations)
+  }
+
   func testShortcutDisplayUsesMacModifierGlyphs() {
     let shortcut = RecordedShortcut(
       keyCode: 24,
