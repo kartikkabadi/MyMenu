@@ -13,7 +13,8 @@ final class SettingsWindowController: NSWindowController {
   init(
     store: DisplayPresentationStore,
     configurationStore: DisplayConfigurationStore,
-    launchAtLoginController: LaunchAtLoginController
+    launchAtLoginController: LaunchAtLoginController,
+    keyboardShortcutController: KeyboardShortcutController
   ) {
     self.launchAtLoginController = launchAtLoginController
 
@@ -21,7 +22,8 @@ final class SettingsWindowController: NSWindowController {
       rootView: SettingsRootView(
         store: store,
         configurationStore: configurationStore,
-        launchAtLoginController: launchAtLoginController
+        launchAtLoginController: launchAtLoginController,
+        keyboardShortcutController: keyboardShortcutController
       )
     )
     let window = NSWindow(
