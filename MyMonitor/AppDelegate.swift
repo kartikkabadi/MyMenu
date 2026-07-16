@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var statusItem: NSStatusItem!
   private var popoverController: PopoverWindowController!
   private var settingsController: SettingsWindowController!
+  private var hasTornDown = false
 
   override init() {
     let router = DisplayRouter()
@@ -49,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    _ = notification
     Self.shared = self
     popoverController = PopoverWindowController(store: presentationStore)
     settingsController = SettingsWindowController(
@@ -83,27 +85,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     button.setAccessibilityIdentifier("mymonitor.statusItem")
   }
 
+  func applicationWillTerminate(_ notification: Notification) {
+    _ = notification
+    teardown()
+  }
+
   @objc private func togglePopover(_ sender: AnyObject?) {
-    guard let button = statusItem.button else { return }
+    _ = sender
+    guard !hasTornDown, let button = statusItem?.button else { return }
     popoverController.toggle(relativeTo: button)
   }
 
   func showSettings() {
+    guard !hasTornDown else { return }
     popoverController.close()
     settingsController.show()
   }
 
   func showDiagnostics(for monitorID: MonitorID? = nil) {
+    guard !hasTornDown else { return }
     popoverController.close()
     diagnosticsController.focus(on: monitorID)
     settingsController.show(destination: .advanced)
   }
 
   func quitApp() {
-    popoverController.close()
-    settingsController.close()
+    teardown()
+    NSApp.terminate(nil)
+  }
+
+  private func teardown() {
+    guard !hasTornDown else { return }
+    hasTornDown = true
+
+    popoverController?.close()
+    settingsController?.close()
     keyboardShortcutController.teardown()
     presentationStore.teardown()
-    NSApp.terminate(nil)
+
+    if let statusItem {
+      NSStatusBar.system.removeStatusItem(statusItem)
+      self.statusItem = nil
+    }
   }
 }
