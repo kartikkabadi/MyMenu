@@ -13,12 +13,15 @@ struct SettingsRootView: View {
       List(SettingsDestination.allCases, selection: $navigationModel.selection) { destination in
         Label(destination.title, systemImage: destination.symbol)
           .tag(destination)
+          .accessibilityIdentifier("settings.destination.\(destination.rawValue)")
       }
       .listStyle(.sidebar)
       .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 230)
+      .accessibilityIdentifier("settings.sidebar")
     } detail: {
       detail
         .navigationTitle(navigationModel.selection.title)
+        .accessibilityIdentifier("settings.detail.\(navigationModel.selection.rawValue)")
     }
     .frame(minWidth: 620, minHeight: 420)
   }
