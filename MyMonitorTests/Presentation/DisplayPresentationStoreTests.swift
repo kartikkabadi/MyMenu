@@ -46,7 +46,7 @@ final class DisplayPresentationStoreTests: XCTestCase {
     assertBrightness(store.monitor(withID: monitorID)?.brightness, equals: 0.9)
     XCTAssertEqual(
       controller.writes.last,
-      .init(
+      FakeMonitorController.Write(
         value: 0.9,
         monitorID: monitorID,
         animated: false,
@@ -85,7 +85,7 @@ final class DisplayPresentationStoreTests: XCTestCase {
 
     XCTAssertEqual(
       controller.writes.last,
-      .init(
+      FakeMonitorController.Write(
         value: 0.81,
         monitorID: monitorID,
         animated: true,
