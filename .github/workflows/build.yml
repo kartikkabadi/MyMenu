@@ -1,17 +1,22 @@
-name: Finalize IORegistry matching
+name: Build MyMonitor
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
+      - rescue/monitor-only-core
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apply-and-validate:
+  build:
+    name: Tests, contracts, project drift, and Xcode 26 builds
     runs-on: macos-15
     timeout-minutes: 20
 
@@ -19,148 +24,53 @@ jobs:
       - name: Check out repository head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Select Xcode 26.3
         run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
-      - name: Apply guarded IORegistry fix
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
+      - name: Test Swift packages with warnings as errors
+        run: swift test -Xswiftc -warnings-as-errors
 
-          def block(lines):
-              return "\n".join(lines) + "\n"
+      - name: Validate frontend contract
+        run: bash scripts/validate_frontend_contract.sh
 
-          arm64 = Path("MyMonitor/ThirdParty/Arm64DDC.swift")
-          text = arm64.read_text()
-          old = block([
-              "    var serviceLocation = 0",
-              "    var ioregServicesForMatching: [IOregService] = []",
-              "    let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(kIOMainPortDefault)",
-              "    defer {",
-              "      IOObjectRelease(ioregRoot)",
-              "    }",
-              "    var iterator = io_iterator_t()",
-              "    defer {",
-              "      IOObjectRelease(iterator)",
-              "    }",
-              "    var ioregService = IOregService()",
-              "    guard IORegistryEntryCreateIterator(ioregRoot, \"IOService\", IOOptionBits(kIORegistryIterateRecursively), &iterator) == KERN_SUCCESS else {",
-              "      return ioregServicesForMatching",
-              "    }",
-          ])
-          new = block([
-              "    var serviceLocation = 0",
-              "    var ioregServicesForMatching: [IOregService] = []",
-              "    let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(kIOMainPortDefault)",
-              "    guard ioregRoot != IO_OBJECT_NULL else { return ioregServicesForMatching }",
-              "    defer { IOObjectRelease(ioregRoot) }",
-              "",
-              "    var iterator = io_iterator_t()",
-              "    guard IORegistryEntryCreateIterator(ioregRoot, \"IOService\", IOOptionBits(kIORegistryIterateRecursively), &iterator) == KERN_SUCCESS else {",
-              "      return ioregServicesForMatching",
-              "    }",
-              "    defer { IOObjectRelease(iterator) }",
-              "",
-              "    var framebufferService = IOregService()",
-          ])
-          if text.count(old) != 1:
-              raise RuntimeError(f"root/iterator block: expected one match, found {text.count(old)}")
-          text = text.replace(old, new, 1)
-
-          old = block([
-              "      if keysFramebuffer.contains(objectOfInterest.name) {",
-              "        ioregService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)",
-              "        serviceLocation += 1",
-              "        ioregService.serviceLocation = serviceLocation",
-              "      } else if objectOfInterest.name == keyDCPAVServiceProxy {",
-              "        self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &ioregService)",
-              "        if ioregService.service != nil {",
-              "          ioregServicesForMatching.append(ioregService)",
-              "        }",
-              "        ioregService = IOregService()",
-              "      }",
-          ])
-          new = block([
-              "      if keysFramebuffer.contains(objectOfInterest.name) {",
-              "        framebufferService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)",
-              "        serviceLocation += 1",
-              "        framebufferService.serviceLocation = serviceLocation",
-              "      } else if objectOfInterest.name == keyDCPAVServiceProxy {",
-              "        // A framebuffer may expose more than one proxy. Isolate proxy-specific state while",
-              "        // retaining the framebuffer identity for every candidate.",
-              "        var candidate = framebufferService",
-              "        self.setIORegServiceDCPAVServiceProxy(entry: objectOfInterest.entry, ioregService: &candidate)",
-              "        if candidate.service != nil {",
-              "          ioregServicesForMatching.append(candidate)",
-              "        }",
-              "      }",
-          ])
-          if text.count(old) != 1:
-              raise RuntimeError(f"proxy candidate block: expected one match, found {text.count(old)}")
-          arm64.write_text(text.replace(old, new, 1))
-
-          contract = Path("scripts/validate_backend_concurrency.sh")
-          text = contract.read_text()
-          old = block([
-              "grep -q 'ioregService = IOregService()' \"$ARM64_DDC\" \\",
-              "  || fail \"Proxy matching state must reset after each service candidate.\"",
-          ])
-          new = block([
-              "grep -q 'var candidate = framebufferService' \"$ARM64_DDC\" \\",
-              "  || fail \"Each IOAV proxy must use isolated state while retaining framebuffer identity.\"",
-          ])
-          if text.count(old) != 1:
-              raise RuntimeError(f"contract candidate assertion: expected one match, found {text.count(old)}")
-          text = text.replace(old, new, 1)
-
-          old = block([
-              "grep -q 'if ioregService.service != nil' \"$ARM64_DDC\" \\",
-              "  || fail \"Only validated external IOAV services may enter DDC matching.\"",
-          ])
-          new = block([
-              "grep -q 'if candidate.service != nil' \"$ARM64_DDC\" \\",
-              "  || fail \"Only validated external IOAV service candidates may enter DDC matching.\"",
-          ])
-          if text.count(old) != 1:
-              raise RuntimeError(f"contract service assertion: expected one match, found {text.count(old)}")
-          contract.write_text(text.replace(old, new, 1))
-          PY
+      - name: Validate backend concurrency
+        run: bash scripts/validate_backend_concurrency.sh
 
       - name: Generate project
         run: ./scripts/generate_xcodeproj.sh
 
-      - name: Test and validate contracts
-        run: |
-          swift test -Xswiftc -warnings-as-errors
-          bash scripts/validate_frontend_contract.sh
-          bash scripts/validate_backend_concurrency.sh
-          git diff --check
+      - name: Verify generated project is committed
+        run: git diff --exit-code -- MyMonitor.xcodeproj/project.pbxproj
 
-      - name: Build Debug and Release with warnings as errors
+      - name: Build Debug with warnings as errors
         run: |
-          for configuration in Debug Release; do
-            xcodebuild \
-              -project MyMonitor.xcodeproj \
-              -scheme MyMonitor \
-              -configuration "$configuration" \
-              -sdk macosx \
-              -derivedDataPath "build/DerivedData-$configuration" \
-              ARCHS=arm64 \
-              ONLY_ACTIVE_ARCH=NO \
-              CODE_SIGNING_ALLOWED=NO \
-              SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
-              build
-          done
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Debug \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Debug \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
 
-      - name: Commit only validated source changes
+      - name: Build Release with warnings as errors
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            MyMonitor/ThirdParty/Arm64DDC.swift \
-            scripts/validate_backend_concurrency.sh \
-            MyMonitor.xcodeproj/project.pbxproj
-          git commit -m "Preserve framebuffer identity across IOAV proxies"
-          git push origin HEAD:${{ github.head_ref }}
+          xcodebuild \
+            -project MyMonitor.xcodeproj \
+            -scheme MyMonitor \
+            -configuration Release \
+            -sdk macosx \
+            -derivedDataPath build/DerivedData-Release \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            build
+
+      - name: Check whitespace
+        run: git diff --check
