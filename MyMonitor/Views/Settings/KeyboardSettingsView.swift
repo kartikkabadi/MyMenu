@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct KeyboardSettingsView: View {
-  @Bindable var store: DisplayPresentationStore
   @Bindable var configurationStore: DisplayConfigurationStore
   @Bindable var keyboardShortcutController: KeyboardShortcutController
 
@@ -32,7 +31,7 @@ struct KeyboardSettingsView: View {
           Text("All external displays")
             .tag(KeyboardBrightnessTarget.allExternalDisplays)
 
-          ForEach(selectableConfigurations) { configuration in
+          ForEach(configurationStore.configurations) { configuration in
             Text(
               configuration.isConnected
                 ? configuration.name
@@ -43,7 +42,7 @@ struct KeyboardSettingsView: View {
         }
         .accessibilityIdentifier("keyboard.targetDisplay")
 
-        Text("If the pointer is not over a controllable external display, MyMonitor uses the first connected external display.")
+        Text("If the pointer is not over a controllable external display, MyMonitor uses the first connected external display. Fully mirrored external displays adjust together.")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -58,14 +57,6 @@ struct KeyboardSettingsView: View {
       }
     }
     .formStyle(.grouped)
-  }
-
-  /// A full mirror is represented by one controllable row. Do not offer its hidden physical members
-  /// as separate hotkey targets, because the representative already fans control out to the set.
-  private var selectableConfigurations: [MonitorConfiguration] {
-    configurationStore.configurations.filter { configuration in
-      !configuration.isConnected || store.monitor(withID: configuration.id) != nil
-    }
   }
 
   private func shortcutRow(
