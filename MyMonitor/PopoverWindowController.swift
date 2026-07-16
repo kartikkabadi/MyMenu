@@ -17,13 +17,12 @@ final class PopoverWindowController: NSObject {
     )
     super.init()
 
+    contentViewController.sizingOptions = [.preferredContentSize]
+
     popover.behavior = .transient
     popover.animates = true
-    popover.contentSize = NSSize(
-      width: BrightnessDesign.panelWidth,
-      height: BrightnessDesign.panelHeight
-    )
     popover.contentViewController = contentViewController
+    prepareContentSize()
   }
 
   func toggle(relativeTo button: NSStatusBarButton) {
@@ -32,7 +31,7 @@ final class PopoverWindowController: NSObject {
       return
     }
 
-    store.refresh()
+    prepareContentSize()
     popover.show(
       relativeTo: button.bounds,
       of: button,
@@ -43,5 +42,20 @@ final class PopoverWindowController: NSObject {
 
   func close() {
     popover.performClose(nil)
+  }
+
+  private func prepareContentSize() {
+    contentViewController.view.layoutSubtreeIfNeeded()
+
+    let fittingSize = contentViewController.view.fittingSize
+    let height = min(
+      max(ceil(fittingSize.height), 1),
+      BrightnessDesign.maximumPopoverHeight
+    )
+
+    popover.contentSize = NSSize(
+      width: BrightnessDesign.popoverWidth,
+      height: height
+    )
   }
 }
