@@ -4,7 +4,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D001 — MyMonitor has no server backend
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Core display discovery, identity, control, persistence, and diagnostics remain local to the Mac.
 
 **Rejected:** Accounts, cloud state, remote configuration, analytics, or an online service required for brightness control.
@@ -13,7 +13,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D002 — Preserve the current engine; migrate through seams
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Keep the reviewed generation, lifecycle, Gamma ownership, and Shade fixes while extracting contracts ticket by ticket.
 
 **Rejected:** One monolithic backend rewrite.
@@ -22,7 +22,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D003 — Desired, observed, and presented brightness are distinct
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** The engine maintains independent desired state, observed state, and optimistic presentation state, plus explicit write status.
 
 **Rejected:** Updating “current brightness” immediately after calling a setter and treating that as hardware truth.
@@ -31,7 +31,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D004 — Cold discovery is non-mutating
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Cold launch and first connection do not write brightness or alter Gamma merely to prove capability.
 
 **Rejected:** DDC no-op write validation and temporary Gamma dimming during launch discovery.
@@ -40,7 +40,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D005 — Cold launch adopts readable hardware state
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** When brightness is readable, cold launch adopts it rather than restoring the saved desired value.
 
 **Rejected:** Automatically writing the last saved value every time the app launches.
@@ -49,7 +49,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D006 — Wake restore requires continuity
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Wake may restore one confirmed continuity target when the same process previously held reliable observed state, identity continuity remains strong, and the restore is bounded to one generation.
 
 **Rejected:** Never restoring after wake; always restoring after every reconnect; repeatedly fighting until the monitor matches.
@@ -58,7 +58,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D007 — Lifecycle reasons are typed
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Cold launch, first connection, wake, transient reconnect, topology change, mode change, Retry, method change, and profile change are distinct policy inputs.
 
 **Rejected:** A generic `force: Bool` as the long-term lifecycle model.
@@ -67,7 +67,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D008 — One immutable topology snapshot per generation
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Identity, mirroring, screen mapping, and control resolution for a generation use one captured topology snapshot.
 
 **Rejected:** Repeated live Core Graphics/AppKit queries throughout one asynchronous reconfiguration.
@@ -76,7 +76,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D009 — Persistent identity is not `CGDirectDisplayID`
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Runtime IDs remain runtime handles. Profiles use a versioned fingerprint, confidence, and connection evidence.
 
 **Rejected:** Raw display ID or display name as the durable preference key.
@@ -85,7 +85,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D010 — Ambiguity prevents automatic restore
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Two equally plausible display-profile matches remain separate and do not receive an automatic saved-state restore.
 
 **Rejected:** Picking the first candidate or silently merging identical monitors.
@@ -94,7 +94,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D011 — Internal control order is Native, DDC, Gamma, Shade
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Automatic resolution prefers Apple Native, then DDC/CI, safe Gamma, and Shade.
 
 **User-facing vocabulary:** Automatic, Hardware control, Software control, Display shade.
@@ -103,7 +103,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D012 — Uncertain writes do not silently stack a fallback
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** A transient or uncertain write failure triggers bounded same-method recovery and explicit degraded state. Any fallback transition occurs through a new generation-safe method transaction.
 
 **Rejected:** Adding Gamma or Shade immediately after a DDC timeout.
@@ -112,7 +112,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D013 — DDC discovery is read-only
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** DDC cold discovery matches a service and reads VCP `0x10`. Write capability is validated on the first explicit user write.
 
 **Rejected:** Writing the current value during discovery.
@@ -121,7 +121,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D014 — DDC failures are typed and bounded
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Service, checksum, timeout, range, write, verification, stale-resource, topology, and cancellation failures remain distinct. Retry counts and delays are bounded.
 
 **Rejected:** `Bool`/`nil` failure collapse and unbounded retry loops.
@@ -130,7 +130,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D015 — Begin with globally serialized DDC I/O
 
-**Status:** Accepted as baseline  
+**Status:** Accepted as baseline
 **Decision:** Preserve one serialized DDC transport lane initially. The architecture permits later per-resource actors.
 
 **Evidence required to change:** Real hardware must show independent services can progress concurrently without shared IOAV races.
@@ -139,7 +139,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D016 — Gamma uses captured baseline tables
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Capture a per-display transfer table, compose dimming from it, and restore it under owner control.
 
 **Rejected:** Generic formula-only ownership and temporary dimming as capability detection.
@@ -148,7 +148,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D017 — Gamma is unavailable when safety is uncertain
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** HDR/EDR, invalid baseline, ownership conflict, virtual targets, or unqualified mirror state may exclude Gamma and select Shade.
 
 **Rejected:** Continuously forcing Gamma because the API call returned success once.
@@ -157,7 +157,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D018 — Shade remains the universal visual fallback
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Shade is used when a visible external `NSScreen` mapping exists and safer methods are unavailable or explicitly rejected.
 
 **Rejected:** Treating Shade as physical brightness or silently claiming hardware state.
@@ -166,7 +166,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D019 — Physical resources are first-class
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** A session identifies the physical control resource separately from the logical display target.
 
 **Rejected:** Assuming one runtime display always equals one independent backlight.
@@ -175,7 +175,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D020 — Private platform calls are isolated
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Undocumented Apple declarations and calls live behind one small adapter boundary exposing MyMonitor-owned types.
 
 **Rejected:** Private symbols in the router, presentation, policy, diagnostics, or tests.
@@ -184,7 +184,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D021 — Direct signed distribution is the target
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Plan public releases around Developer ID signing, notarization, stapling, and Gatekeeper validation.
 
 **Rejected:** Claiming Mac App Store compatibility while hardware control depends on undocumented interfaces; bypassing quarantine.
@@ -193,7 +193,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D022 — No privileged helper
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** The backend remains in the app process unless a future concrete requirement proves a helper necessary.
 
 **Rejected:** A daemon, root helper, driver, kernel extension, or permission escalation added for architectural appearance.
@@ -202,7 +202,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D023 — Diagnostics are structured, bounded, local, and redacted
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Record typed local events with retention limits and privacy-safe support IDs. Export occurs only on user action.
 
 **Rejected:** Cloud telemetry, unbounded text logs, raw system inventory, raw EDID/serial/path export.
@@ -211,7 +211,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D024 — Hardware qualification is a release gate
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Builds and fake transports validate architecture. Physical monitor claims require the matrix in `QA_MATRIX.md`.
 
 **Rejected:** “Works with all monitors” based on API success or competitor behavior.
@@ -220,7 +220,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D025 — Brightness remains the only monitor command
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** The backend controls luminance only.
 
 **Rejected:** Volume, mute, contrast, input, power, color gains, resolution, HDR boosting, or virtual display scope in this programme.
@@ -229,7 +229,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D026 — `UserDefaults` may back a versioned profile store
 
-**Status:** Accepted as initial storage  
+**Status:** Accepted as initial storage
 **Decision:** A versioned Codable profile snapshot may use `UserDefaults` behind a storage protocol.
 
 **Rejected:** Scattered preference keys in engine code; a database without need.
@@ -238,14 +238,14 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D027 — Screen-capture behavior for Shade remains an explicit B10 decision
 
-**Status:** Pending evidence  
+**Status:** Pending evidence
 **Decision:** B10 must test and record whether Shade appears in screenshots and screen sharing.
 
 **Rationale:** The correct behavior involves user expectation and AppKit window-sharing behavior, not only implementation convenience.
 
 ## B-D028 — Compatibility exceptions are data, not branching folklore
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Known monitor/path exceptions must be represented by reviewed evidence and typed policy data.
 
 **Rejected:** Scattered model-name checks and unexplained sleeps.
@@ -254,7 +254,7 @@ This document records binding backend decisions. A decision changes only through
 
 ## B-D029 — Only confirmed continuity state is automatically restorable
 
-**Status:** Accepted  
+**Status:** Accepted
 **Decision:** Wake or transient reconnect may automatically restore only the last confirmed continuity target: either a reliable observed value adopted as the stable live-session state or a user-committed desired value later confirmed applied. A newer failed, provisional, queued, writing, or unverified desired value remains visible as user intent but requires explicit Retry or a new user action.
 
 The confirmed continuity target is process-local. Adopting observed hardware state does not silently overwrite the persisted user preference.
@@ -316,3 +316,25 @@ The confirmed continuity target is process-local. Adopting observed hardware sta
 **Rejected:** Awaiting DDC or discovery teardown during app termination, or relying only on later asynchronous cleanup to restore visible system state.
 
 **Rationale:** Termination must be prompt and deterministic while still guaranteeing no late work can resurrect state or leave process-owned visual effects behind.
+
+## B-D036 — Failed validation suspends relative transport commands
+
+**Status:** Accepted
+**Decision:** After first-write validation or a later write fails, the associated process-local baseline may remain presented but cannot drive further relative transport commands. Eligibility returns only through fresh observation, successful explicit Retry, or a new absolute user selection.
+
+**Required tests:** Repeated hotkeys after validation failure perform zero writes; Retry or a new absolute selection opens at most one new serialized validation gate.
+
+**Rejected:** Letting repeated hotkeys reopen first-write validation or generate speculative writes from a failed baseline.
+
+**Rationale:** A relative command should not turn one unsupported or broken write path into an unbounded sequence of attempts. The user retains a deterministic recovery path through Retry or absolute selection.
+
+## B-D037 — Later automatic cross-domain replacements start neutral
+
+**Status:** Accepted
+**Decision:** The method resolved during an explicit family-selection transaction may apply its own domain’s saved value after safe installation. A later automatic replacement into another control domain because of health, lifecycle, topology, or mode change starts neutral unless a separately qualified conversion policy exists.
+
+**Required tests:** Explicit Software selection with Gamma unavailable may apply the saved Shade value; a later Gamma-to-Shade replacement while Software remains selected preserves but does not apply that old Shade value; Gamma and Shade are never simultaneously non-neutral.
+
+**Rejected:** Applying an old Gamma or Shade value merely because the broader Software preference remains selected after the active method changes automatically.
+
+**Rationale:** The original user action authorized a family and its then-selected method, not an arbitrary future replay of stale attenuation state in another domain. Neutral installation prevents surprise jumps and double-dimming.
