@@ -50,11 +50,11 @@ This document records binding backend decisions. A decision changes only through
 ## B-D006 — Wake restore requires continuity
 
 **Status:** Accepted
-**Decision:** Wake may restore one confirmed continuity target when the same process previously held reliable observed state, identity continuity remains strong, and the restore is bounded to one generation.
+**Decision:** Wake may restore one confirmed continuity target when the same process previously held reliable observed state and identity continuity remains strong. One restore budget is consumed per session and continuity/wake epoch; engine generations reject stale publication but do not replenish that budget.
 
-**Rejected:** Never restoring after wake; always restoring after every reconnect; repeatedly fighting until the monitor matches.
+**Rejected:** Never restoring after wake; always restoring after every reconnect; repeatedly fighting until the monitor matches; allowing every topology generation inside one wake to restore again.
 
-**Rationale:** Some monitors reset on wake, while unconditional restores can target the wrong or intentionally changed display.
+**Rationale:** Some monitors reset on wake, while unconditional or generation-scoped restores can repeatedly write, target the wrong display, or override an intentional change.
 
 ## B-D007 — Lifecycle reasons are typed
 
@@ -149,20 +149,20 @@ This document records binding backend decisions. A decision changes only through
 ## B-D017 — Gamma is unavailable when safety is uncertain
 
 **Status:** Accepted
-**Decision:** HDR/EDR, invalid baseline, ownership conflict, virtual targets, or unqualified mirror state may exclude Gamma and select Shade.
+**Decision:** HDR/EDR, invalid baseline, ownership conflict, virtual targets, or unqualified mirror state may exclude Gamma. Automatic or Software control may then resolve Shade according to their allowed candidate order.
 
 **Rejected:** Continuously forcing Gamma because the API call returned success once.
 
 **Rationale:** Software dimming must not damage color behavior or fight the system.
 
-## B-D018 — Shade remains the universal visual fallback
+## B-D018 — Shade remains the universal visual fallback within allowed preferences
 
 **Status:** Accepted
-**Decision:** Shade is used when a visible external `NSScreen` mapping exists and safer methods are unavailable or explicitly rejected.
+**Decision:** Shade is available when a visible external `NSScreen` mapping exists and the active preference permits it: Automatic, Software control, or Display shade. It is never selected behind an explicit Hardware control preference.
 
-**Rejected:** Treating Shade as physical brightness or silently claiming hardware state.
+**Rejected:** Treating Shade as physical brightness, silently claiming hardware state, or overriding an explicit Hardware selection.
 
-**Rationale:** Shade is predictable and reversible but semantically different from backlight control.
+**Rationale:** Shade is predictable and reversible but semantically different from backlight control. Its broad availability does not weaken strict user-selected method families.
 
 ## B-D019 — Physical resources are first-class
 
