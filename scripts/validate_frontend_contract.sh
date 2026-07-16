@@ -50,7 +50,8 @@ reject_pattern 'GlassBrightnessControl' "$APP" \
 while IFS= read -r -d '' file; do
   lines=$(wc -l < "$file" | tr -d ' ')
   if (( lines > 450 )); then
-    fail "$(realpath --relative-to="$ROOT" "$file") has $lines lines; split the view before it becomes a monolith."
+    relative_path="${file#"$ROOT"/}"
+    fail "$relative_path has $lines lines; split the view before it becomes a monolith."
   fi
 done < <(find "$VIEWS" -name '*.swift' -print0)
 
